@@ -14277,7 +14277,7 @@ __kicia_hook_shared.script_paths = function()
 -- Change these two to rename the script. DisplayName is what the menu title bar
 -- shows; StorageRoot is the folder name on disk (renaming it orphans any configs
 -- already saved under the old name).
-local DisplayName = 'KiciaHook'
+local DisplayName = 'BoscoHook'
 local StorageRoot = 'KiciaHook'
 
 -- Where queue_on_teleport should re-read the script from when "Auto Execute on
