@@ -2360,11 +2360,11 @@ function Library:Window(config)
     local cursorGui = nil
     pcall(function()
         local CoreGui = game:GetService("CoreGui")
-        if CoreGui:FindFirstChild("DeamerCursor") then
-            CoreGui.DeamerCursor:Destroy()
+        if CoreGui:FindFirstChild("DreamerCursor") then
+            CoreGui.DreamerCursor:Destroy()
         end
         cursorGui = Instance.new("ScreenGui")
-        cursorGui.Name = "DeamerCursor"
+        cursorGui.Name = "DreamerCursor"
         cursorGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         cursorGui.DisplayOrder = 999999
         cursorGui.ResetOnSpawn = false
@@ -2473,7 +2473,7 @@ function Library:CreateSettingsPage(window)
     local tab = window:AddTab("Settings")
     if ThemeManager then
         ThemeManager:SetLibrary(Library)
-        ThemeManager:SetFolder("Deamer")
+        ThemeManager:SetFolder("Dreamer")
         local left = tab:AddLeftGroupbox("Theme")
         if ThemeManager.BuildThemeSection then
             pcall(function() ThemeManager:BuildThemeSection(left) end)
@@ -2483,7 +2483,7 @@ function Library:CreateSettingsPage(window)
     end
     if SaveManager then
         SaveManager:SetLibrary(Library)
-        SaveManager:SetFolder("Deamer")
+        SaveManager:SetFolder("Dreamer")
         if ThemeManager and SaveManager.IgnoreThemeSettings then
             pcall(function() SaveManager:IgnoreThemeSettings() end)
         end
