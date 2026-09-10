@@ -2360,11 +2360,11 @@ function Library:Window(config)
     local cursorGui = nil
     pcall(function()
         local CoreGui = game:GetService("CoreGui")
-        if CoreGui:FindFirstChild("AethereaCursor") then
-            CoreGui.AethereaCursor:Destroy()
+        if CoreGui:FindFirstChild("DeamerCursor") then
+            CoreGui.DeamerCursor:Destroy()
         end
         cursorGui = Instance.new("ScreenGui")
-        cursorGui.Name = "AethereaCursor"
+        cursorGui.Name = "DeamerCursor"
         cursorGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         cursorGui.DisplayOrder = 999999
         cursorGui.ResetOnSpawn = false
@@ -2473,7 +2473,7 @@ function Library:CreateSettingsPage(window)
     local tab = window:AddTab("Settings")
     if ThemeManager then
         ThemeManager:SetLibrary(Library)
-        ThemeManager:SetFolder("Aetherea")
+        ThemeManager:SetFolder("Deamer")
         local left = tab:AddLeftGroupbox("Theme")
         if ThemeManager.BuildThemeSection then
             pcall(function() ThemeManager:BuildThemeSection(left) end)
@@ -2483,7 +2483,7 @@ function Library:CreateSettingsPage(window)
     end
     if SaveManager then
         SaveManager:SetLibrary(Library)
-        SaveManager:SetFolder("Aetherea")
+        SaveManager:SetFolder("Deamer")
         if ThemeManager and SaveManager.IgnoreThemeSettings then
             pcall(function() SaveManager:IgnoreThemeSettings() end)
         end
@@ -2500,7 +2500,7 @@ end
 local Window, SpooferPage, UnlockerPage, ViewPage
 local ui_ok, ui_err = pcall(function()
     Window = Library:Window({
-        Name = "Aetherea",
+        Name = "Dreamer",
         SubTitle = "RIVALS Spoofer",
         TimeRemaining = "Lifetime",
         Style = "Sidebar",
