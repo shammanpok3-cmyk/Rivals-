@@ -1,15 +1,36 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shammanpok3-cmyk/Rivals-/refs/heads/main/UElib"))()
 
--- ===== RIVALS MODULE REQUIRES =====
+-- ===== RIVALS MODULE REQUIRES (non-blocking) =====
 local replicated_storage = game:GetService("ReplicatedStorage")
-local modules = replicated_storage:WaitForChild("Modules", 10)
 local item_lib, fighter_controller, client_viewmodel
-pcall(function() item_lib = require(modules.ItemLibrary) end)
-pcall(function() fighter_controller = require(game:GetService("Players").LocalPlayer.PlayerScripts.Controllers.FighterController) end)
-pcall(function()
-    client_viewmodel = require(game:GetService("Players").LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
+
+task.spawn(function()
+    local modules = replicated_storage:WaitForChild("Modules", 10)
+    if not modules then return end
+    pcall(function() item_lib = require(modules.ItemLibrary) end)
 end)
--- ===================================
+
+task.spawn(function()
+    local path = game:GetService("Players").LocalPlayer
+        :WaitForChild("PlayerScripts", 10)
+        :WaitForChild("Controllers", 10)
+        :WaitForChild("FighterController", 10)
+    if not path then return end
+    pcall(function() fighter_controller = require(path) end)
+end)
+
+task.spawn(function()
+    local path = game:GetService("Players").LocalPlayer
+        :WaitForChild("PlayerScripts", 10)
+        :WaitForChild("Modules", 10)
+        :WaitForChild("ClientReplicatedClasses", 10)
+        :WaitForChild("ClientFighter", 10)
+        :WaitForChild("ClientItem", 10)
+        :WaitForChild("ClientViewModel", 10)
+    if not path then return end
+    pcall(function() client_viewmodel = require(path) end)
+end)
+-- ===================================================
 
 local t = Library.Theme
 if t then
@@ -498,7 +519,9 @@ mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Roun
 -- ============ DISABLE ANIMATIONS ============
 local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
 
-if client_viewmodel and client_viewmodel.Update then
+task.spawn(function()
+    task.wait(2)
+    if not client_viewmodel or not client_viewmodel.Update then return end
     local old = client_viewmodel.Update
     client_viewmodel.Update = function(c, dt, movement_state, render_data)
         local cfg = VIS.disable_anims
@@ -512,9 +535,7 @@ if client_viewmodel and client_viewmodel.Update then
                 c._landing_spring.Value = 0; c._landing_spring.Target = 0
                 c._jump_spring.Value = 0; c._jump_spring.Target = 0
             end
-            if s.sliding and movement_state then
-                movement_state.IsSliding = false
-            end
+            if s.sliding and movement_state then movement_state.IsSliding = false end
             if s.shoot and c._recoil_spring then
                 c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
                 c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
@@ -522,13 +543,11 @@ if client_viewmodel and client_viewmodel.Update then
             if s.aim and c._aim_spring then
                 c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
             end
-            if s.sprint and movement_state then
-                movement_state.IsActuallySprinting = false
-            end
+            if s.sprint and movement_state then movement_state.IsActuallySprinting = false end
         end
         return old(c, dt, movement_state, render_data)
     end
-end
+end)
 
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
 daBox:AddToggle("da_bobbing", { Text="Bobbing", Default=false, Callback=function(v) VIS.disable_anims.select.bobbing=v end })
@@ -576,24 +595,28 @@ local function createBeam(from, to)
     end)
 end
 
-pcall(function()
-    local tp = LocalPlayer.PlayerScripts.Modules.TracerEffect
-    if not tp then return end
-    local mod = require(tp)
-    local old = mod.Play
-    mod.Play = function(...)
-        local args = {...}
-        if VIS.tracers.enable and args[2] and args[2].IsLocal then
-            local muzzle = args[4] and args[4].MuzzlePosition
-            if muzzle and args[2].RaycastResults then
-                for _, v in ipairs(args[2].RaycastResults) do
-                    if v.Position then createBeam(muzzle, v.Position) end
+task.spawn(function()
+    task.wait(3)
+    pcall(function()
+        local tp = LocalPlayer.PlayerScripts:WaitForChild("Modules", 5)
+        tp = tp and tp:WaitForChild("TracerEffect", 5)
+        if not tp then return end
+        local mod = require(tp)
+        local old = mod.Play
+        mod.Play = function(...)
+            local args = {...}
+            if VIS.tracers.enable and args[2] and args[2].IsLocal then
+                local muzzle = args[4] and args[4].MuzzlePosition
+                if muzzle and args[2].RaycastResults then
+                    for _, v in ipairs(args[2].RaycastResults) do
+                        if v.Position then createBeam(muzzle, v.Position) end
+                    end
                 end
+                if not VIS.tracers.through_walls then return end
             end
-            if not VIS.tracers.through_walls then return end
+            return old(...)
         end
-        return old(...)
-    end
+    end)
 end)
 
 btBox:AddToggle("bt_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.tracers.enable=v end })
@@ -777,8 +800,9 @@ local hitsoundMap = {
 }
 local hsSound = Instance.new("Sound"); hsSound.Name="secret_hitsound"; hsSound.Volume=1; hsSound.Parent=SoundService
 
-pcall(function()
-    if not client_viewmodel then return end
+task.spawn(function()
+    task.wait(3)
+    if not client_viewmodel or not client_viewmodel.PlayHitmarkerSound then return end
     local old = client_viewmodel.PlayHitmarkerSound
     client_viewmodel.PlayHitmarkerSound = function(self, crit, pitch)
         if VIS.hitsounds.enable and VIS.hitsounds.selected and hitsoundMap[VIS.hitsounds.selected] then
