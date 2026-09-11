@@ -1,5 +1,18 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shammanpok3-cmyk/Rivals-/refs/heads/main/UElib"))()
 
+-- ===== RIVALS MODULE REQUIRES (added) =====
+local replicated_storage = game:GetService("ReplicatedStorage")
+local modules = replicated_storage:WaitForChild("Modules", 10)
+local item_lib, enum_lib, fighter_controller, client_viewmodel, utility
+pcall(function() item_lib = require(modules.ItemLibrary) end)
+pcall(function() enum_lib = require(modules.EnumLibrary) end)
+pcall(function() fighter_controller = require(game:GetService("Players").LocalPlayer.PlayerScripts.Controllers.FighterController) end)
+pcall(function()
+    client_viewmodel = require(game:GetService("Players").LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
+end)
+pcall(function() utility = require(modules.Utility) end)
+-- ==========================================
+
 local t = Library.Theme
 if t then
     t.Accent              = Color3.fromRGB(80, 80, 80)
@@ -112,7 +125,7 @@ core:AddLabel("Secret online — Owner background")
 core:AddToggle("ex", { Text = "Example feature", Default = false })
 
 -- ==========================================================
--- VISUAL TAB — full Eliusm visuals + skybox
+-- VISUAL TAB — full Eliusm visuals + skybox, with Rivals hooks
 -- ==========================================================
 local RunService   = game:GetService("RunService")
 local Players      = game:GetService("Players")
@@ -153,7 +166,7 @@ local VIS = {
     trajectory = { enable=false, all_weapons=false, speed=90, arc_up=10,
         color=Color3.fromRGB(120,81,166) },
     death_effects = { enable=false, type="Explosion", color=Color3.fromRGB(120,81,166) },
-    damage_numbers = { enable=false, color_type="Gradient",
+    damage_numbers = { enable=false, remove_ingame=false, color_type="Gradient",
         color1=Color3.fromRGB(255,80,80), color2=Color3.fromRGB(255,210,90),
         font="GothamBold", duration=0.8, rise=42, text_size=18 },
     hitsounds = { enable=false, remove_default=false, volume=3, pitch=1, selected="windows xp" },
@@ -472,10 +485,56 @@ mbBox:AddToggle("mb_enable", { Text="Enabled", Default=false, Callback=function(
 mbBox:AddSlider("mb_intensity", { Text="Intensity", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.motion_blur.intensity=v end })
 mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Rounding=2, Callback=function(v) VIS.motion_blur.sensitivity=v end })
 
--- ============ DISABLE ANIMATIONS ============
+-- ============ DISABLE ANIMATIONS (REAL HOOK) ============
 local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
+
+local function hookAnims()
+    if not client_viewmodel or not client_viewmodel.Update then return end
+    local old = client_viewmodel.Update
+    client_viewmodel.Update = function(c, dt, movement_state, render_data)
+        local cfg = VIS.disable_anims
+        if cfg.enable and c and c.ClientItem and c.ClientItem.ClientFighter and c.ClientItem.ClientFighter.IsLocalPlayer then
+            local s = cfg.select
+            for _, k in ipairs(s) do
+                if k == "bobbing" and c._bobbing_value_spring then
+                    c._bobbing_value_spring.Value = Vector2.new(0,0); c._bobbing_value_spring.Target = Vector2.new(0,0)
+                    c._bobbing_speed_spring.Value = 0; c._bobbing_speed_spring.Target = 0; c._bobbing_tick = 0
+                elseif k == "landing" and c._landing_spring then
+                    c._landing_spring.Value = 0; c._landing_spring.Target = 0
+                    c._jump_spring.Value = 0; c._jump_spring.Target = 0
+                elseif k == "sway" and c._sway_spring then
+                    c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
+                    c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
+                elseif k == "equip" and c._equip_spring then
+                    c._equip_spring.Position = c._equip_spring.Target; c._equip_spring.Velocity = 0
+                elseif k == "inspect" and c._inspect_spring then
+                    c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
+                elseif k == "sliding" and movement_state then
+                    movement_state.IsSliding = false
+                elseif k == "shoot" and c._recoil_spring then
+                    c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
+                    c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
+                elseif k == "impulse" and c._impulse_position_spring then
+                    c._impulse_position_spring.Value = Vector3.new(0,0,0); c._impulse_position_spring.Target = Vector3.new(0,0,0)
+                elseif k == "aim" and c._aim_spring then
+                    c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
+                elseif k == "sprint" and movement_state then
+                    movement_state.IsActuallySprinting = false
+                end
+            end
+        end
+        return old(c, dt, movement_state, render_data)
+    end
+end
+hookAnims()
+
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
-daBox:AddDropdown("da_types", { Text="Types", Values={"bobbing","landing","sway","equip","inspect","sliding","shoot","impulse","aim","sprint","attack","charge","reload","throw"}, Default="bobbing", Callback=function(v) VIS.disable_anims.select={v} end })
+daBox:AddInput("da_types", { Text="Types (comma)", Default="bobbing,landing,sway,equip,inspect,sliding,shoot,impulse,aim,sprint,attack,charge,reload,throw", Callback=function(v)
+    local list = {}
+    for w in string.gmatch(v or "", "[^,%s]+") do table.insert(list, w) end
+    VIS.disable_anims.select = list
+end })
+daBox:AddLabel("Types: bobbing, landing, sway, equip, inspect, sliding, shoot, impulse, aim, sprint")
 
 -- ============ BULLET TRACERS ============
 local btBox = tabs.visual:AddRightGroupbox("Bullet Tracers")
@@ -569,7 +628,6 @@ RunService.Heartbeat:Connect(function()
         if hudFrame.Visible then hudFrame.Visible=false end
         return
     end
-    -- Closest enemy
     local closest, best = nil, math.huge
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -604,10 +662,12 @@ hudBox:AddSlider("hud_ox", { Text="Offset X", Min=-500, Max=500, Default=0, Roun
 hudBox:AddSlider("hud_oy", { Text="Offset Y", Min=-500, Max=500, Default=0, Rounding=0, Callback=function(v) VIS.target_hud.offset_y=v end })
 hudBox:AddSlider("hud_scale", { Text="Scale", Min=0.5, Max=2.5, Default=1, Rounding=2, Callback=function(v) VIS.target_hud.scale=v end })
 
--- ============ TRAJECTORY ============
+-- ============ TRAJECTORY (with all_weapons check) ============
 local tjBox = tabs.visual:AddLeftGroupbox("Trajectory")
 local trajFolder = Instance.new("Folder"); trajFolder.Name="SecretTrajectory"; trajFolder.Parent=workspace
 local trajPool = {}
+
+local throwables = { grenade=true, molotov=true, flashbang=true, ["smoke grenade"]=true, satchel=true, ["jump pad"]=true, ["war horn"]=true, ["flare gun"]=true }
 
 local function getTrajPart(i)
     if trajPool[i] and trajPool[i].Parent then return trajPool[i] end
@@ -623,6 +683,16 @@ RunService.RenderStepped:Connect(function()
     if not c.enable then
         for i=1,32 do if trajPool[i] then trajPool[i].Transparency=1 end end
         return
+    end
+    -- all_weapons check
+    if not c.all_weapons and fighter_controller then
+        local local_fighter = fighter_controller.LocalFighter
+        local item = local_fighter and local_fighter.EquippedItem
+        local name = item and item.Name and string.lower(item.Name)
+        if not (name and throwables[name]) then
+            for i=1,32 do if trajPool[i] then trajPool[i].Transparency=1 end end
+            return
+        end
     end
     local origin = Camera.CFrame.Position
     local vel = Camera.CFrame.LookVector * c.speed + Vector3.new(0, c.arc_up, 0)
@@ -692,13 +762,80 @@ deBox:AddSlider("de_r", { Text="R", Min=0, Max=255, Default=120, Rounding=0, Cal
 deBox:AddSlider("de_g", { Text="G", Min=0, Max=255, Default=81, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,v,c.B*255) end })
 deBox:AddSlider("de_b", { Text="B", Min=0, Max=255, Default=166, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,c.G*255,v) end })
 
--- ============ DAMAGE NUMBERS ============
+-- ============ DAMAGE NUMBERS (REAL — hooked to LocalFighter.ReplicateFromServer) ============
 local dmgBox = tabs.visual:AddRightGroupbox("Damage Numbers")
 local dmgGui = Instance.new("ScreenGui"); dmgGui.Name="secret_dmg"; dmgGui.ResetOnSpawn=false; dmgGui.IgnoreGuiInset=true; dmgGui.DisplayOrder=500
 pcall(function() dmgGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
 
+local function fontFromName(n)
+    local ok, f = pcall(function() return Enum.Font[n] end)
+    return ok and f or Enum.Font.GothamBold
+end
+
+local function spawnDamageNumber(damage, worldpos)
+    local c = VIS.damage_numbers
+    if not c.enable or not worldpos then return end
+    local sp, on = Camera:WorldToViewportPoint(worldpos)
+    if not on then return end
+    local lbl = Instance.new("TextLabel")
+    lbl.BackgroundTransparency=1; lbl.Size=UDim2.fromOffset(140,26)
+    lbl.AnchorPoint=Vector2.new(0.5,0.5)
+    lbl.Position=UDim2.fromOffset(sp.X, sp.Y)
+    lbl.Font=fontFromName(c.font); lbl.TextSize=c.text_size
+    lbl.Text="-"..tostring(math.floor(damage + 0.5))
+    lbl.TextStrokeTransparency=1; lbl.TextColor3=c.color1; lbl.ZIndex=10
+    lbl.Parent=dmgGui
+    local stroke = Instance.new("UIStroke", lbl)
+    stroke.Thickness=1.5; stroke.Color=Color3.new(); stroke.Transparency=0.15
+    local scale = Instance.new("UIScale", lbl); scale.Scale=0.5
+    if c.color_type == "Gradient" then
+        local grad = Instance.new("UIGradient", lbl)
+        grad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, c.color1), ColorSequenceKeypoint.new(1, c.color2) })
+        grad.Rotation = 90; lbl.TextColor3 = Color3.new(1,1,1)
+    end
+    local startX, startY = sp.X, sp.Y
+    local jitter = math.random(-14,14)
+    local start = tick()
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        local t = (tick() - start) / c.duration
+        if t >= 1 then conn:Disconnect(); pcall(function() lbl:Destroy() end); return end
+        local ease = 1 - (1-t)*(1-t)*(1-t)
+        if c.color_type == "Rainbow" then lbl.TextColor3 = Color3.fromHSV((tick()*0.6)%1, 0.75, 1) end
+        local s
+        if t < 0.16 then s = 0.5 + (t/0.16)*0.62 else s = 1.12 - ((t-0.16)/0.84)*0.12 end
+        scale.Scale = s
+        local fade = t < 0.55 and 0 or (t-0.55)/0.45
+        lbl.Position = UDim2.fromOffset(startX + jitter*ease, startY - c.rise*ease)
+        lbl.TextTransparency = fade
+        stroke.Transparency = 0.15 + 0.85*fade
+    end)
+end
+
+-- Hook LocalFighter.ReplicateFromServer to catch DamageNumberEffect
+pcall(function()
+    if not fighter_controller then return end
+    local local_fighter = fighter_controller.LocalFighter
+    if not local_fighter or not local_fighter.ReplicateFromServer then return end
+    local old = local_fighter.ReplicateFromServer
+    local_fighter.ReplicateFromServer = function(controller, _type, ...)
+        if _type == "DamageNumberEffect" and VIS.damage_numbers.enable then
+            local args = {...}
+            local hit_root, hit_damage, is_headshot = args[1], args[2], args[3]
+            if hit_root and hit_damage then
+                local ok, pos = pcall(function()
+                    return hit_root.Position + Vector3.new(0, is_headshot and 2.6 or 2.1, 0)
+                end)
+                spawnDamageNumber(hit_damage, ok and pos or nil)
+                if VIS.damage_numbers.remove_ingame then return end
+            end
+        end
+        return old(controller, _type, ...)
+    end
+end)
+
 dmgBox:AddToggle("dmg_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.damage_numbers.enable=v end })
-dmgBox:AddToggle("dmg_remove", { Text="Remove In-Game", Default=false, Callback=function(v) end })
+dmgBox:AddToggle("dmg_remove", { Text="Remove In-Game", Default=false, Callback=function(v) VIS.damage_numbers.remove_ingame=v end })
 dmgBox:AddDropdown("dmg_colortype", { Text="Color Type", Values={"Gradient","Solid","Rainbow"}, Default="Gradient", Callback=function(v) VIS.damage_numbers.color_type=v end })
 dmgBox:AddSlider("dmg_c1_r", { Text="Color1 R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(v,c.G*255,c.B*255) end })
 dmgBox:AddSlider("dmg_c1_g", { Text="Color1 G", Min=0, Max=255, Default=80, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(c.R*255,v,c.B*255) end })
@@ -728,12 +865,9 @@ local hitsoundMap = {
 local hsSound = Instance.new("Sound"); hsSound.Name="secret_hitsound"; hsSound.Volume=1; hsSound.Parent=SoundService
 
 pcall(function()
-    local path = LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem
-    local vmModule = path:WaitForChild("ClientViewModel", 5)
-    if not vmModule then return end
-    local cvm = require(vmModule)
-    local old = cvm.PlayHitmarkerSound
-    cvm.PlayHitmarkerSound = function(self, crit, pitch)
+    if not client_viewmodel then return end
+    local old = client_viewmodel.PlayHitmarkerSound
+    client_viewmodel.PlayHitmarkerSound = function(self, crit, pitch)
         if VIS.hitsounds.enable and VIS.hitsounds.selected and hitsoundMap[VIS.hitsounds.selected] then
             hsSound.SoundId = hitsoundMap[VIS.hitsounds.selected]
             hsSound.Volume = VIS.hitsounds.volume
@@ -751,8 +885,38 @@ hsBox:AddDropdown("hs_sel", { Text="Sound", Values={"windows xp","minecraft bow"
 hsBox:AddSlider("hs_vol", { Text="Volume", Min=0, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hitsounds.volume=v end })
 hsBox:AddSlider("hs_pitch", { Text="Pitch", Min=0.5, Max=1.5, Default=1, Rounding=1, Callback=function(v) VIS.hitsounds.pitch=v end })
 
--- ============ HIT NOTIFY ============
+-- ============ HIT NOTIFY (REAL — wired through the same ReplicateFromServer hook) ============
 local hnBox = tabs.visual:AddLeftGroupbox("Hit Notify")
+local hnGui = Instance.new("ScreenGui"); hnGui.Name="secret_hitnotify"; hnGui.ResetOnSpawn=false; hnGui.DisplayOrder=500
+pcall(function() hnGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
+
+pcall(function()
+    if not fighter_controller then return end
+    local lf = fighter_controller.LocalFighter
+    if not lf or not lf.ReplicateFromServer then return end
+    local old = lf.ReplicateFromServer
+    lf.ReplicateFromServer = function(controller, _type, ...)
+        if _type == "DamageNumberEffect" and VIS.hit_notify.enable then
+            local args = {...}
+            local hit_root, hit_damage = args[1], args[2]
+            if hit_root and hit_damage then
+                local msg = VIS.hit_notify.msg or "Hit {target} for {damage}"
+                local target = "?"
+                pcall(function()
+                    local char = hit_root.Parent
+                    local plr = Players:GetPlayerFromCharacter(char)
+                    target = plr and plr.Name or (char and char.Name) or "?"
+                end)
+                msg = msg:gsub("{target}", target)
+                msg = msg:gsub("{damage}", tostring(math.floor(hit_damage + 0.5)))
+                msg = msg:gsub("{hitpart}", hit_root.Name or "?")
+                pcall(function() Library:Notify(msg, VIS.hit_notify.duration) end)
+            end
+        end
+        return old(controller, _type, ...)
+    end
+end)
+
 hnBox:AddToggle("hn_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.hit_notify.enable=v end })
 hnBox:AddSlider("hn_dur", { Text="Duration", Min=1, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hit_notify.duration=v end })
 hnBox:AddInput("hn_msg", { Text="Message", Default="Hit {target} for {damage}", Callback=function(v) VIS.hit_notify.msg=v end })
@@ -847,29 +1011,80 @@ vmcBox:AddSlider("vmc_wh_t", { Text="WH Transparency", Min=0, Max=1, Default=0.5
 vmcBox:AddToggle("vmc_ah_enable", { Text="Arm Highlight", Default=false, Callback=function(v) VIS.viewmodel.arm_highlight.enable=v end })
 vmcBox:AddSlider("vmc_ah_t", { Text="AH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.arm_highlight.transparency=v end })
 
--- ============ VIEWMODEL OFFSETS ============
+-- ============ VIEWMODEL OFFSETS (REAL — via item_lib.ViewModels) ============
 local vmoBox = tabs.visual:AddRightGroupbox("Viewmodel Offsets")
 local vmOldOffsets = {}
 
-vmoBox:AddToggle("vmo_enable", { Text="Enabled", Default=false, Callback=function(v)
-    VIS.viewmodel.offsets.enable = v
-    if not v then
-        for i, off in pairs(vmOldOffsets) do
-            pcall(function()
-                local vm = LocalPlayer.PlayerScripts.Modules.UserInterface.ViewModels
-                if vm and vm[i] then vm[i].RootPartOffset = off end
-            end)
+local function applyVmoOffsets()
+    if not item_lib or not item_lib.ViewModels then return end
+    for i, vm in pairs(item_lib.ViewModels) do
+        if vm.RootPartOffset then
+            if not vmOldOffsets[i] then vmOldOffsets[i] = vm.RootPartOffset end
+            local o = vmOldOffsets[i]
+            vm.RootPartOffset = CFrame.new(o.X + VIS.viewmodel.offsets.x, o.Y + VIS.viewmodel.offsets.y, o.Z + VIS.viewmodel.offsets.z)
         end
-        vmOldOffsets = {}
     end
-end })
+end
+
+RunService.Heartbeat:Connect(function()
+    if VIS.viewmodel.offsets.enable then applyVmoOffsets() end
+end)
+
+vmoBox:AddToggle("vmo_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.viewmodel.offsets.enable=v end })
 vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.x=v end })
 vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
 vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
 
--- ============ VIEWMODEL CUSTOM ============
+-- ============ VIEWMODEL CUSTOM (REAL — character + first-person override) ============
 local vmcustBox = tabs.visual:AddRightGroupbox("Viewmodel Custom")
-vmcustBox:AddToggle("vmcust_enable", { Text="Enabled", Default=false, Callback=function(v) end })
+local custTracked = {}
+
+local function custRestore()
+    for p, d in pairs(custTracked) do
+        if p.Parent then
+            p.Material = d.m; p.Color = d.c; p.Transparency = d.t
+        end
+    end
+    custTracked = {}
+end
+
+RunService.Heartbeat:Connect(function()
+    local b = VIS.viewmodel.custom_body
+    local it = VIS.viewmodel.custom_item
+    local ch = LocalPlayer.Character
+    if not ch then custRestore(); return end
+    for _, p in ipairs(ch:GetDescendants()) do
+        if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+            if not custTracked[p] then
+                custTracked[p] = { m=p.Material, c=p.Color, t=p.Transparency }
+            end
+            if b.material_enable then p.Material = Enum.Material[b.material] or p.Material end
+            if b.color_enable then p.Color = b.color end
+            p.Transparency = math.clamp(b.transparency / 100, 0, 1)
+        end
+    end
+    if b.disable_clothes then
+        for _, p in ipairs(ch:GetDescendants()) do
+            if p:IsA("Shirt") then p.ShirtTemplate = "" end
+            if p:IsA("Pants") then p.PantsTemplate = "" end
+            if p:IsA("ShirtGraphic") then p.Graphic = "" end
+        end
+    end
+    local fp = workspace:FindFirstChild("ViewModels")
+    local first = fp and fp:FindFirstChild("FirstPerson")
+    if first then
+        for _, p in ipairs(first:GetDescendants()) do
+            if p:IsA("BasePart") then
+                local n = string.lower(p.Name)
+                if not (n:find("arm",1,true) or n:find("hand",1,true)) then
+                    if it.material_enable then p.Material = Enum.Material[it.material] or p.Material end
+                    if it.color_enable then p.Color = it.color end
+                    p.Transparency = math.clamp(it.transparency / 100, 0, 1)
+                end
+            end
+        end
+    end
+end)
 
 vmcustBox:AddToggle("vmcust_body_color", { Text="Body Color", Default=false, Callback=function(v) VIS.viewmodel.custom_body.color_enable=v end })
 vmcustBox:AddSlider("vmcust_body_r", { Text="Body R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_body.color; VIS.viewmodel.custom_body.color=C3(v,c.G*255,c.B*255) end })
