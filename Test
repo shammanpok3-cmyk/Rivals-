@@ -1,17 +1,16 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shammanpok3-cmyk/Rivals-/refs/heads/main/UElib"))()
 
--- ===== RIVALS MODULE REQUIRES (added) =====
+-- ===== RIVALS MODULE REQUIRES =====
 local replicated_storage = game:GetService("ReplicatedStorage")
 local modules = replicated_storage:WaitForChild("Modules", 10)
-local item_lib, enum_lib, fighter_controller, client_viewmodel, utility
+local item_lib, enum_lib, fighter_controller, client_viewmodel
 pcall(function() item_lib = require(modules.ItemLibrary) end)
 pcall(function() enum_lib = require(modules.EnumLibrary) end)
 pcall(function() fighter_controller = require(game:GetService("Players").LocalPlayer.PlayerScripts.Controllers.FighterController) end)
 pcall(function()
     client_viewmodel = require(game:GetService("Players").LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
 end)
-pcall(function() utility = require(modules.Utility) end)
--- ==========================================
+-- ===================================
 
 local t = Library.Theme
 if t then
@@ -125,7 +124,7 @@ core:AddLabel("Secret online — Owner background")
 core:AddToggle("ex", { Text = "Example feature", Default = false })
 
 -- ==========================================================
--- VISUAL TAB — full Eliusm visuals + skybox, with Rivals hooks
+-- VISUAL TAB — Eliusm visuals (UElib-compatible)
 -- ==========================================================
 local RunService   = game:GetService("RunService")
 local Players      = game:GetService("Players")
@@ -136,7 +135,6 @@ local LocalPlayer  = Players.LocalPlayer
 local Camera       = workspace.CurrentCamera
 local Mouse        = LocalPlayer:GetMouse()
 
-local function V2(x,y) return Vector2.new(x,y) end
 local function C3(r,g,b) return Color3.fromRGB(math.clamp(r or 0,0,255), math.clamp(g or 0,0,255), math.clamp(b or 0,0,255)) end
 
 local VIS = {
@@ -155,7 +153,7 @@ local VIS = {
         fade=false, fade_color=Color3.fromRGB(255,0,170),
         follow_target=false, follow_source="target",
         shimmer=false, shimmer_speed=4,
-        text_enable=false, text_content="elisium", text_font="Plex",
+        text_enable=false, text_content="elisium",
         text_size=16, text_offset=18, text_color=Color3.new(1,1,1),
         text_outline=true, text_animation=false },
     motion_blur = { enable=false, intensity=0.5, sensitivity=1 },
@@ -180,8 +178,7 @@ local VIS = {
         custom_body = { color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", disable_clothes=false, transparency=0 },
         custom_item = { color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", transparency=0 },
     },
-    target_hud = { enable=false, target_method="silent aim", position_mode="static",
-        offset_x=0, offset_y=0, scale=1 },
+    target_hud = { enable=false, scale=1, offset_x=0, offset_y=0 },
 }
 
 -- ============ CHAMS ============
@@ -316,7 +313,7 @@ local function ch_anchor()
                 for _, p in ipairs(first:GetDescendants()) do
                     if p.Name == "_muzzle" and p:IsA("Attachment") then
                         local sp = Camera:WorldToViewportPoint(p.WorldPosition)
-                        return V2(sp.X, sp.Y)
+                        return Vector2.new(sp.X, sp.Y)
                     end
                 end
             end
@@ -326,14 +323,14 @@ local function ch_anchor()
                     local part = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild("HumanoidRootPart")
                     if part then
                         local sp, on = Camera:WorldToViewportPoint(part.Position)
-                        if on then return V2(sp.X, sp.Y) end
+                        if on then return Vector2.new(sp.X, sp.Y) end
                     end
                 end
             end
         end
     end
     local vp = Camera.ViewportSize
-    return V2(vp.X/2, vp.Y/2)
+    return Vector2.new(vp.X/2, vp.Y/2)
 end
 
 local function hideCrosshair()
@@ -378,12 +375,12 @@ RunService.RenderStepped:Connect(function(dt)
         chRing.Visible=false; chRingO.Visible=false
         local arms
         if c.style == "t" then
-            arms = { {V2(0,gap),V2(0,gap+length),"bottom_line"}, {V2(-gap,0),V2(-gap-length,0),"left_line"}, {V2(gap,0),V2(gap+length,0),"right_line"} }
+            arms = { {Vector2.new(0,gap),Vector2.new(0,gap+length),"bottom_line"}, {Vector2.new(-gap,0),Vector2.new(-gap-length,0),"left_line"}, {Vector2.new(gap,0),Vector2.new(gap+length,0),"right_line"} }
         elseif c.style == "x" then
             local d = 0.7071
-            arms = { {V2(-d,-d)*gap,V2(-d,-d)*(gap+length),"top_line"}, {V2(d,d)*gap,V2(d,d)*(gap+length),"bottom_line"}, {V2(-d,d)*gap,V2(-d,d)*(gap+length),"left_line"}, {V2(d,-d)*gap,V2(d,-d)*(gap+length),"right_line"} }
+            arms = { {Vector2.new(-d,-d)*gap,Vector2.new(-d,-d)*(gap+length),"top_line"}, {Vector2.new(d,d)*gap,Vector2.new(d,d)*(gap+length),"bottom_line"}, {Vector2.new(-d,d)*gap,Vector2.new(-d,d)*(gap+length),"left_line"}, {Vector2.new(d,-d)*gap,Vector2.new(d,-d)*(gap+length),"right_line"} }
         else
-            arms = { {V2(0,-gap),V2(0,-gap-length),"top_line"}, {V2(0,gap),V2(0,gap+length),"bottom_line"}, {V2(-gap,0),V2(-gap-length,0),"left_line"}, {V2(gap,0),V2(gap+length,0),"right_line"} }
+            arms = { {Vector2.new(0,-gap),Vector2.new(0,-gap-length),"top_line"}, {Vector2.new(0,gap),Vector2.new(0,gap+length),"bottom_line"}, {Vector2.new(-gap,0),Vector2.new(-gap-length,0),"left_line"}, {Vector2.new(gap,0),Vector2.new(gap+length,0),"right_line"} }
         end
         for i=1,4 do
             local a = arms[i]; local l = chLines[i]; local o = chLinesO[i]
@@ -455,7 +452,7 @@ chBox:AddSlider("ch_r", { Text="R", Min=0, Max=255, Default=0, Rounding=0, Callb
 chBox:AddSlider("ch_g", { Text="G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,v,VIS.crosshair.color.B*255) end })
 chBox:AddSlider("ch_b", { Text="B", Min=0, Max=255, Default=170, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,VIS.crosshair.color.G*255,v) end })
 chBox:AddToggle("ch_text", { Text="Text", Default=false, Callback=function(v) VIS.crosshair.text_enable=v end })
-chBox:AddInput("ch_text_val", { Text="Text Value", Default="elisium", Callback=function(v) VIS.crosshair.text_content=v end })
+chBox:AddToggle("ch_text_use", { Text="Text: use 'elisium'", Default=true, Callback=function(v) VIS.crosshair.text_content = v and "elisium" or "" end })
 chBox:AddSlider("ch_text_size", { Text="Text Size", Min=8, Max=48, Default=16, Rounding=0, Callback=function(v) VIS.crosshair.text_size=v end })
 chBox:AddSlider("ch_text_off", { Text="Text Offset", Min=0, Max=120, Default=18, Rounding=0, Callback=function(v) VIS.crosshair.text_offset=v end })
 chBox:AddToggle("ch_text_anim", { Text="Text Animation", Default=false, Callback=function(v) VIS.crosshair.text_animation=v end })
@@ -485,7 +482,7 @@ mbBox:AddToggle("mb_enable", { Text="Enabled", Default=false, Callback=function(
 mbBox:AddSlider("mb_intensity", { Text="Intensity", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.motion_blur.intensity=v end })
 mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Rounding=2, Callback=function(v) VIS.motion_blur.sensitivity=v end })
 
--- ============ DISABLE ANIMATIONS (REAL HOOK) ============
+-- ============ DISABLE ANIMATIONS ============
 local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
 
 local function hookAnims()
@@ -529,12 +526,67 @@ end
 hookAnims()
 
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
-daBox:AddInput("da_types", { Text="Types (comma)", Default="bobbing,landing,sway,equip,inspect,sliding,shoot,impulse,aim,sprint,attack,charge,reload,throw", Callback=function(v)
-    local list = {}
-    for w in string.gmatch(v or "", "[^,%s]+") do table.insert(list, w) end
-    VIS.disable_anims.select = list
-end })
-daBox:AddLabel("Types: bobbing, landing, sway, equip, inspect, sliding, shoot, impulse, aim, sprint")
+daBox:AddToggle("da_bobbing", { Text="Bobbing", Default=false, Callback=function(v) VIS.disable_anims.select.bobbing=v end })
+daBox:AddToggle("da_landing", { Text="Landing", Default=false, Callback=function(v) VIS.disable_anims.select.landing=v end })
+daBox:AddToggle("da_sway", { Text="Sway", Default=false, Callback=function(v) VIS.disable_anims.select.sway=v end })
+daBox:AddToggle("da_equip", { Text="Equip", Default=false, Callback=function(v) VIS.disable_anims.select.equip=v end })
+daBox:AddToggle("da_inspect", { Text="Inspect", Default=false, Callback=function(v) VIS.disable_anims.select.inspect=v end })
+daBox:AddToggle("da_sliding", { Text="Sliding", Default=false, Callback=function(v) VIS.disable_anims.select.sliding=v end })
+daBox:AddToggle("da_shoot", { Text="Shoot", Default=false, Callback=function(v) VIS.disable_anims.select.shoot=v end })
+daBox:AddToggle("da_impulse", { Text="Impulse", Default=false, Callback=function(v) VIS.disable_anims.select.impulse=v end })
+daBox:AddToggle("da_aim", { Text="Aim", Default=false, Callback=function(v) VIS.disable_anims.select.aim=v end })
+daBox:AddToggle("da_sprint", { Text="Sprint", Default=false, Callback=function(v) VIS.disable_anims.select.sprint=v end })
+
+-- fix select table for hook
+VIS.disable_anims.select = setmetatable({}, {
+    __index = function(t, k) return rawget(t, k) end,
+})
+setmetatable(VIS.disable_anims.select, {
+    __index = function(t,k) return rawget(t,k) end,
+})
+
+-- convert to list form for hook
+local _origHook = client_viewmodel and client_viewmodel.Update
+-- hook already uses ipairs(cfg.select) — change to pairs
+if client_viewmodel and client_viewmodel.Update then
+    local hooked = client_viewmodel.Update
+    client_viewmodel.Update = function(c, dt, movement_state, render_data)
+        local cfg = VIS.disable_anims
+        if cfg.enable and c and c.ClientItem and c.ClientItem.ClientFighter and c.ClientItem.ClientFighter.IsLocalPlayer then
+            local s = cfg.select
+            for k, on in pairs(s) do
+                if on then
+                    if k == "bobbing" and c._bobbing_value_spring then
+                        c._bobbing_value_spring.Value = Vector2.new(0,0); c._bobbing_value_spring.Target = Vector2.new(0,0)
+                        c._bobbing_speed_spring.Value = 0; c._bobbing_speed_spring.Target = 0; c._bobbing_tick = 0
+                    elseif k == "landing" and c._landing_spring then
+                        c._landing_spring.Value = 0; c._landing_spring.Target = 0
+                        c._jump_spring.Value = 0; c._jump_spring.Target = 0
+                    elseif k == "sway" and c._sway_spring then
+                        c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
+                        c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
+                    elseif k == "equip" and c._equip_spring then
+                        c._equip_spring.Position = c._equip_spring.Target; c._equip_spring.Velocity = 0
+                    elseif k == "inspect" and c._inspect_spring then
+                        c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
+                    elseif k == "sliding" and movement_state then
+                        movement_state.IsSliding = false
+                    elseif k == "shoot" and c._recoil_spring then
+                        c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
+                        c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
+                    elseif k == "impulse" and c._impulse_position_spring then
+                        c._impulse_position_spring.Value = Vector3.new(0,0,0); c._impulse_position_spring.Target = Vector3.new(0,0,0)
+                    elseif k == "aim" and c._aim_spring then
+                        c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
+                    elseif k == "sprint" and movement_state then
+                        movement_state.IsActuallySprinting = false
+                    end
+                end
+            end
+        end
+        return hooked(c, dt, movement_state, render_data)
+    end
+end
 
 -- ============ BULLET TRACERS ============
 local btBox = tabs.visual:AddRightGroupbox("Bullet Tracers")
@@ -656,13 +708,11 @@ RunService.Heartbeat:Connect(function()
 end)
 
 hudBox:AddToggle("hud_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.target_hud.enable=v end })
-hudBox:AddDropdown("hud_method", { Text="Method", Values={"silent aim","aimbot"}, Default="silent aim", Callback=function(v) VIS.target_hud.target_method=v end })
-hudBox:AddDropdown("hud_pos", { Text="Position", Values={"static","center","gunpoint","target"}, Default="static", Callback=function(v) VIS.target_hud.position_mode=v end })
 hudBox:AddSlider("hud_ox", { Text="Offset X", Min=-500, Max=500, Default=0, Rounding=0, Callback=function(v) VIS.target_hud.offset_x=v end })
 hudBox:AddSlider("hud_oy", { Text="Offset Y", Min=-500, Max=500, Default=0, Rounding=0, Callback=function(v) VIS.target_hud.offset_y=v end })
 hudBox:AddSlider("hud_scale", { Text="Scale", Min=0.5, Max=2.5, Default=1, Rounding=2, Callback=function(v) VIS.target_hud.scale=v end })
 
--- ============ TRAJECTORY (with all_weapons check) ============
+-- ============ TRAJECTORY ============
 local tjBox = tabs.visual:AddLeftGroupbox("Trajectory")
 local trajFolder = Instance.new("Folder"); trajFolder.Name="SecretTrajectory"; trajFolder.Parent=workspace
 local trajPool = {}
@@ -684,7 +734,6 @@ RunService.RenderStepped:Connect(function()
         for i=1,32 do if trajPool[i] then trajPool[i].Transparency=1 end end
         return
     end
-    -- all_weapons check
     if not c.all_weapons and fighter_controller then
         local local_fighter = fighter_controller.LocalFighter
         local item = local_fighter and local_fighter.EquippedItem
@@ -762,7 +811,7 @@ deBox:AddSlider("de_r", { Text="R", Min=0, Max=255, Default=120, Rounding=0, Cal
 deBox:AddSlider("de_g", { Text="G", Min=0, Max=255, Default=81, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,v,c.B*255) end })
 deBox:AddSlider("de_b", { Text="B", Min=0, Max=255, Default=166, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,c.G*255,v) end })
 
--- ============ DAMAGE NUMBERS (REAL — hooked to LocalFighter.ReplicateFromServer) ============
+-- ============ DAMAGE NUMBERS ============
 local dmgBox = tabs.visual:AddRightGroupbox("Damage Numbers")
 local dmgGui = Instance.new("ScreenGui"); dmgGui.Name="secret_dmg"; dmgGui.ResetOnSpawn=false; dmgGui.IgnoreGuiInset=true; dmgGui.DisplayOrder=500
 pcall(function() dmgGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
@@ -812,7 +861,6 @@ local function spawnDamageNumber(damage, worldpos)
     end)
 end
 
--- Hook LocalFighter.ReplicateFromServer to catch DamageNumberEffect
 pcall(function()
     if not fighter_controller then return end
     local local_fighter = fighter_controller.LocalFighter
@@ -885,10 +933,8 @@ hsBox:AddDropdown("hs_sel", { Text="Sound", Values={"windows xp","minecraft bow"
 hsBox:AddSlider("hs_vol", { Text="Volume", Min=0, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hitsounds.volume=v end })
 hsBox:AddSlider("hs_pitch", { Text="Pitch", Min=0.5, Max=1.5, Default=1, Rounding=1, Callback=function(v) VIS.hitsounds.pitch=v end })
 
--- ============ HIT NOTIFY (REAL — wired through the same ReplicateFromServer hook) ============
+-- ============ HIT NOTIFY ============
 local hnBox = tabs.visual:AddLeftGroupbox("Hit Notify")
-local hnGui = Instance.new("ScreenGui"); hnGui.Name="secret_hitnotify"; hnGui.ResetOnSpawn=false; hnGui.DisplayOrder=500
-pcall(function() hnGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
 
 pcall(function()
     if not fighter_controller then return end
@@ -919,7 +965,7 @@ end)
 
 hnBox:AddToggle("hn_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.hit_notify.enable=v end })
 hnBox:AddSlider("hn_dur", { Text="Duration", Min=1, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hit_notify.duration=v end })
-hnBox:AddInput("hn_msg", { Text="Message", Default="Hit {target} for {damage}", Callback=function(v) VIS.hit_notify.msg=v end })
+hnBox:AddToggle("hn_use", { Text="Use default message", Default=true, Callback=function(v) VIS.hit_notify.msg = v and "Hit {target} for {damage}" or "Hit!" end })
 hnBox:AddLabel("Formats: {target}, {damage}, {hitpart}")
 
 -- ============ VIEWMODEL CHAMS ============
@@ -1011,7 +1057,7 @@ vmcBox:AddSlider("vmc_wh_t", { Text="WH Transparency", Min=0, Max=1, Default=0.5
 vmcBox:AddToggle("vmc_ah_enable", { Text="Arm Highlight", Default=false, Callback=function(v) VIS.viewmodel.arm_highlight.enable=v end })
 vmcBox:AddSlider("vmc_ah_t", { Text="AH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.arm_highlight.transparency=v end })
 
--- ============ VIEWMODEL OFFSETS (REAL — via item_lib.ViewModels) ============
+-- ============ VIEWMODEL OFFSETS ============
 local vmoBox = tabs.visual:AddRightGroupbox("Viewmodel Offsets")
 local vmOldOffsets = {}
 
@@ -1035,24 +1081,21 @@ vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Call
 vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
 vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
 
--- ============ VIEWMODEL CUSTOM (REAL — character + first-person override) ============
+-- ============ VIEWMODEL CUSTOM ============
 local vmcustBox = tabs.visual:AddRightGroupbox("Viewmodel Custom")
 local custTracked = {}
-
-local function custRestore()
-    for p, d in pairs(custTracked) do
-        if p.Parent then
-            p.Material = d.m; p.Color = d.c; p.Transparency = d.t
-        end
-    end
-    custTracked = {}
-end
 
 RunService.Heartbeat:Connect(function()
     local b = VIS.viewmodel.custom_body
     local it = VIS.viewmodel.custom_item
     local ch = LocalPlayer.Character
-    if not ch then custRestore(); return end
+    if not ch then
+        for p, d in pairs(custTracked) do
+            if p.Parent then p.Material=d.m; p.Color=d.c; p.Transparency=d.t end
+        end
+        custTracked = {}
+        return
+    end
     for _, p in ipairs(ch:GetDescendants()) do
         if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
             if not custTracked[p] then
