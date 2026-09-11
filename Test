@@ -210,7 +210,7 @@ local function applyChams(plr)
         if chamsHL[plr] then chamsHL[plr]:Destroy(); chamsHL[plr] = nil end
         chamsBody[plr] = chamsBody[plr] or {}
         for _, p in ipairs(ch:GetDescendants()) do
-            if p:IsA("BasePart") and p.Transparency < 1 then
+            if p:IsA("BasePart") and p.Transparency < 1 and not p.Name:find("Hitbox") then
                 if not chamsBody[plr][p] then
                     local tex = {}
                     for _, tt in ipairs(p:GetChildren()) do
