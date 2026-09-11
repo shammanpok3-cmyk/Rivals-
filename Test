@@ -48,72 +48,45 @@ local function getWin()
     end
 end
 
-local function applyBg(id)
+local function applyBackground()
     local win = getWin()
-    if not win then return end
+    if not win then return false end
     for _, v in ipairs(win:GetChildren()) do
         if v.Name == "sbg" or v.Name == "sov" then v:Destroy() end
     end
+    local asset
+    if getcustomasset and isfile(cached) then
+        local ok, id = pcall(getcustomasset, cached)
+        if ok and id then asset = id end
+    end
+    if not asset then return false end
     local img = Instance.new("ImageLabel")
-    img.Name="sbg"; img.BackgroundTransparency=1; img.Image=id
-    img.Size=UDim2.fromScale(1,1); img.ZIndex=0
-    img.ScaleType=Enum.ScaleType.Crop; img.Parent=win
+    img.Name = "sbg"
+    img.BackgroundTransparency = 1
+    img.Image = asset
+    img.Size = UDim2.fromScale(1, 1)
+    img.ZIndex = 0
+    img.ScaleType = Enum.ScaleType.Crop
+    img.Parent = win
     local ov = Instance.new("Frame")
-    ov.Name="sov"; ov.BackgroundColor3=Color3.new(0,0,0)
-    ov.BackgroundTransparency=0.55; ov.BorderSizePixel=0
-    ov.Size=UDim2.fromScale(1,1); ov.ZIndex=1; ov.Parent=win
+    ov.Name = "sov"
+    ov.BackgroundColor3 = Color3.new(0,0,0)
+    ov.BackgroundTransparency = 0.55
+    ov.BorderSizePixel = 0
+    ov.Size = UDim2.fromScale(1, 1)
+    ov.ZIndex = 1
+    ov.Parent = win
+    return true
 end
 
-local function fetchBg()
-    if isfile(cached) then delfile(cached) end
-    local ok, raw = pcall(game.HttpGet, game, imgUrl)
-    if not ok or type(raw) ~= "string" or #raw < 200 then
-        Library:Notify("bg failed", 4); return
-    end
-    writefile(cached, raw)
-    if getcustomasset then
-        applyBg(getcustomasset(cached))
-        Library:Notify("bg loaded", 3)
-    else
-        Library:Notify("no getcustomasset", 4)
-    end
-end
-
-local function stripAlpha(root)
-    if not root then return end
-    for _, v in ipairs(root:GetDescendants()) do
-        if v:IsA("Frame") or v:IsA("ScrollingFrame") then
-            if v.Name == "sbg" or v.Name == "sov" then continue end
-            local s = v.AbsoluteSize
-            if s.X > 120 and s.Y > 40 and v.BackgroundTransparency < 0.4 then
-                v.BackgroundTransparency = 0.55
-            end
+local function loadBackground()
+    if not isfile(cached) then
+        local ok, raw = pcall(game.HttpGet, game, imgUrl)
+        if ok and type(raw) == "string" and #raw > 200 then
+            pcall(writefile, cached, raw)
         end
     end
-end
-
-local function nukeBlue(root)
-    if not root then return end
-    for _, v in ipairs(root:GetDescendants()) do
-        if v:IsA("Frame") or v:IsA("ScrollingFrame") then
-            local c = v.BackgroundColor3
-            if c.B > 0.35 and c.B > c.R + 0.1 then
-                local m = (c.R + c.G + c.B) / 3
-                v.BackgroundColor3 = Color3.new(m*0.6, m*0.6, m*0.6)
-            end
-        elseif v:IsA("TextLabel") or v:IsA("TextButton") then
-            local tc = v.TextColor3
-            if tc.B > 0.35 and tc.B > tc.R + 0.1 then v.TextColor3 = Color3.fromRGB(200,200,200) end
-            local bc = v.BackgroundColor3
-            if bc.B > 0.35 and bc.B > bc.R + 0.1 then v.BackgroundColor3 = Color3.fromRGB(20,20,20) end
-        elseif v:IsA("UIStroke") then
-            local c = v.Color
-            if c.B > 0.35 and c.B > c.R + 0.1 then v.Color = Color3.fromRGB(50,50,50) end
-        elseif v:IsA("ImageLabel") or v:IsA("ImageButton") then
-            local c = v.ImageColor3
-            if c.B > 0.35 and c.B > c.R + 0.1 then v.ImageColor3 = Color3.fromRGB(160,160,160) end
-        end
-    end
+    return applyBackground()
 end
 
 local win = Library:CreateWindow({ Title = "Secret | Rivals", Center = true, AutoShow = true })
@@ -161,24 +134,13 @@ local VIS = {
     tracers = { enable=false, color_start=Color3.new(1,1,1), color_end=Color3.new(1,1,1),
         life_time=1.5, glow=4, width0=0.35, width1=0.15, speed=3,
         through_walls=false },
-    trajectory = { enable=false, all_weapons=false, speed=90, arc_up=10,
-        color=Color3.fromRGB(120,81,166) },
     death_effects = { enable=false, type="Explosion", color=Color3.fromRGB(120,81,166) },
-    damage_numbers = { enable=false, remove_ingame=false, color_type="Gradient",
-        color1=Color3.fromRGB(255,80,80), color2=Color3.fromRGB(255,210,90),
-        font="GothamBold", duration=0.8, rise=42, text_size=18 },
     hitsounds = { enable=false, remove_default=false, volume=3, pitch=1, selected="windows xp" },
-    hit_notify = { enable=false, duration=3, msg="Hit {target} for {damage}" },
     viewmodel = {
         weapon_chams = { enable=false, color=Color3.new(1,1,1), material="Neon", transparency=0 },
-        arm_chams = { enable=false, color=Color3.new(1,1,1), material="Neon", transparency=0, invisible=false },
         weapon_highlight = { enable=false, color=Color3.new(1,1,1), transparency=0.5, outline_color=Color3.new(1,1,1), outline_transparency=0 },
-        arm_highlight = { enable=false, color=Color3.new(1,1,1), transparency=0.5, outline_color=Color3.new(1,1,1), outline_transparency=0 },
         offsets = { enable=false, x=0, y=0, z=0 },
-        custom_body = { enable=false, color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", disable_clothes=false, transparency=0 },
-        custom_item = { enable=false, color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", transparency=0 },
     },
-    target_hud = { enable=false, scale=1, offset_x=0, offset_y=0 },
 }
 
 -- ============ CHAMS ============
@@ -505,22 +467,8 @@ if client_viewmodel and client_viewmodel.Update then
                 c._landing_spring.Value = 0; c._landing_spring.Target = 0
                 c._jump_spring.Value = 0; c._jump_spring.Target = 0
             end
-            if s.sway and c._sway_spring then
-                c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
-                c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
-            end
-            if s.inspect and c._inspect_spring then
-                c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
-            end
             if s.sliding and movement_state then
                 movement_state.IsSliding = false
-            end
-            if s.shoot and c._recoil_spring then
-                c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
-                c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
-            end
-            if s.impulse and c._impulse_position_spring then
-                c._impulse_position_spring.Value = Vector3.new(0,0,0); c._impulse_position_spring.Target = Vector3.new(0,0,0)
             end
             if s.aim and c._aim_spring then
                 c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
@@ -536,11 +484,7 @@ end
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
 daBox:AddToggle("da_bobbing", { Text="Bobbing", Default=false, Callback=function(v) VIS.disable_anims.select.bobbing=v end })
 daBox:AddToggle("da_landing", { Text="Landing", Default=false, Callback=function(v) VIS.disable_anims.select.landing=v end })
-daBox:AddToggle("da_sway", { Text="Sway", Default=false, Callback=function(v) VIS.disable_anims.select.sway=v end })
-daBox:AddToggle("da_inspect", { Text="Inspect", Default=false, Callback=function(v) VIS.disable_anims.select.inspect=v end })
 daBox:AddToggle("da_sliding", { Text="Sliding", Default=false, Callback=function(v) VIS.disable_anims.select.sliding=v end })
-daBox:AddToggle("da_shoot", { Text="Shoot", Default=false, Callback=function(v) VIS.disable_anims.select.shoot=v end })
-daBox:AddToggle("da_impulse", { Text="Impulse", Default=false, Callback=function(v) VIS.disable_anims.select.impulse=v end })
 daBox:AddToggle("da_aim", { Text="Aim", Default=false, Callback=function(v) VIS.disable_anims.select.aim=v end })
 daBox:AddToggle("da_sprint", { Text="Sprint", Default=false, Callback=function(v) VIS.disable_anims.select.sprint=v end })
 
@@ -616,109 +560,6 @@ btBox:AddSlider("bt_w1", { Text="Width End", Min=0, Max=2, Default=0.15, Roundin
 btBox:AddSlider("bt_speed", { Text="Speed", Min=0, Max=10, Default=3, Rounding=1, Callback=function(v) VIS.tracers.speed=v end })
 btBox:AddToggle("bt_walls", { Text="Through Walls", Default=false, Callback=function(v) VIS.tracers.through_walls=v end })
 
--- ============ TARGET HUD ============
-local hudBox = tabs.visual:AddRightGroupbox("Target HUD")
-local hudGui = Instance.new("ScreenGui")
-hudGui.Name="secret_hud"; hudGui.ResetOnSpawn=false; hudGui.IgnoreGuiInset=true; hudGui.DisplayOrder=998
-pcall(function() hudGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
-local hudFrame = Instance.new("Frame")
-hudFrame.Size=UDim2.fromOffset(240,64); hudFrame.Position=UDim2.fromOffset(14,100)
-hudFrame.BackgroundColor3=Color3.fromRGB(18,18,18)
-hudFrame.BorderSizePixel=0; hudFrame.Visible=false; hudFrame.Parent=hudGui
-local hudStroke = Instance.new("UIStroke"); hudStroke.Color=Color3.fromRGB(80,80,80); hudStroke.Thickness=1; hudStroke.Parent=hudFrame
-local hudName = Instance.new("TextLabel"); hudName.BackgroundTransparency=1; hudName.Size=UDim2.new(1,-12,0,20); hudName.Position=UDim2.fromOffset(6,4); hudName.Font=Enum.Font.Code; hudName.TextSize=14; hudName.TextColor3=Color3.new(1,1,1); hudName.TextXAlignment=Enum.TextXAlignment.Left; hudName.Text=""; hudName.Parent=hudFrame
-local hudHP = Instance.new("Frame"); hudHP.BackgroundColor3=Color3.fromRGB(20,20,20); hudHP.BorderSizePixel=0; hudHP.Position=UDim2.fromOffset(6,46); hudHP.Size=UDim2.new(1,-12,0,4); hudHP.Parent=hudFrame
-local hudHPFill = Instance.new("Frame"); hudHPFill.BackgroundColor3=Color3.fromRGB(90,90,90); hudHPFill.BorderSizePixel=0; hudHPFill.Size=UDim2.fromScale(1,1); hudHPFill.Parent=hudHP
-local hudLevel = Instance.new("TextLabel"); hudLevel.BackgroundTransparency=1; hudLevel.Size=UDim2.new(1,-12,0,18); hudLevel.Position=UDim2.fromOffset(6,24); hudLevel.Font=Enum.Font.Code; hudLevel.TextSize=12; hudLevel.TextColor3=Color3.fromRGB(200,200,200); hudLevel.TextXAlignment=Enum.TextXAlignment.Left; hudLevel.Text=""; hudLevel.Parent=hudFrame
-
-RunService.Heartbeat:Connect(function()
-    if not VIS.target_hud.enable then
-        if hudFrame.Visible then hudFrame.Visible=false end
-        return
-    end
-    local closest, best = nil, math.huge
-    local myChar = LocalPlayer.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then hudFrame.Visible=false; return end
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            local root = plr.Character:FindFirstChild("HumanoidRootPart")
-            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-            if root and hum and hum.Health > 0 then
-                if plr:GetAttribute("TeamID") ~= LocalPlayer:GetAttribute("TeamID") then
-                    local d = (root.Position - myRoot.Position).Magnitude
-                    if d < best then best = d; closest = plr end
-                end
-            end
-        end
-    end
-    if not closest then hudFrame.Visible=false; return end
-    local hum = closest.Character:FindFirstChildOfClass("Humanoid")
-    hudName.Text = closest.Name
-    hudLevel.Text = "Level: " .. tostring(closest:GetAttribute("Level") or "?")
-    hudHPFill.Size = UDim2.fromScale(hum.Health / math.max(hum.MaxHealth,1), 1)
-    local s = VIS.target_hud.scale
-    hudFrame.Size = UDim2.fromOffset(240 * s, 64 * s)
-    hudFrame.Position = UDim2.fromOffset(14 + VIS.target_hud.offset_x, 100 + VIS.target_hud.offset_y)
-    hudFrame.Visible = true
-end)
-
-hudBox:AddToggle("hud_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.target_hud.enable=v end })
-hudBox:AddSlider("hud_ox", { Text="Offset X", Min=-500, Max=500, Default=0, Rounding=0, Callback=function(v) VIS.target_hud.offset_x=v end })
-hudBox:AddSlider("hud_oy", { Text="Offset Y", Min=-500, Max=500, Default=0, Rounding=0, Callback=function(v) VIS.target_hud.offset_y=v end })
-hudBox:AddSlider("hud_scale", { Text="Scale", Min=0.5, Max=2.5, Default=1, Rounding=2, Callback=function(v) VIS.target_hud.scale=v end })
-
--- ============ TRAJECTORY ============
-local tjBox = tabs.visual:AddLeftGroupbox("Trajectory")
-local trajFolder = Instance.new("Folder"); trajFolder.Name="SecretTrajectory"; trajFolder.Parent=workspace
-local trajPool = {}
-
-local throwables = { grenade=true, molotov=true, flashbang=true, ["smoke grenade"]=true, satchel=true, ["jump pad"]=true, ["war horn"]=true, ["flare gun"]=true }
-
-local function getTrajPart(i)
-    if trajPool[i] and trajPool[i].Parent then return trajPool[i] end
-    local p = Instance.new("Part")
-    p.Anchored=true; p.CanCollide=false; p.CanQuery=false; p.CanTouch=false
-    p.Shape=Enum.PartType.Ball; p.Size=Vector3.new(0.4,0.4,0.4)
-    p.Material=Enum.Material.Neon; p.Parent=trajFolder
-    trajPool[i]=p; return p
-end
-
-RunService.RenderStepped:Connect(function()
-    local c = VIS.trajectory
-    if not c.enable then
-        for i=1,32 do if trajPool[i] then trajPool[i].Transparency=1 end end
-        return
-    end
-    if not c.all_weapons and fighter_controller then
-        local local_fighter = fighter_controller.LocalFighter
-        local item = local_fighter and local_fighter.EquippedItem
-        local name = item and item.Name and string.lower(item.Name)
-        if not (name and throwables[name]) then
-            for i=1,32 do if trajPool[i] then trajPool[i].Transparency=1 end end
-            return
-        end
-    end
-    local origin = Camera.CFrame.Position
-    local vel = Camera.CFrame.LookVector * c.speed + Vector3.new(0, c.arc_up, 0)
-    local gravity = Vector3.new(0, -workspace.Gravity, 0)
-    local pos = origin
-    for i=1,32 do
-        local nextPos = pos + vel * 0.07 + gravity * (0.5 * 0.07 * 0.07)
-        local p = getTrajPart(i)
-        p.Position=nextPos; p.Color=c.color; p.Transparency=0
-        pos=nextPos; vel=vel + gravity * 0.07
-    end
-end)
-
-tjBox:AddToggle("tj_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.trajectory.enable=v end })
-tjBox:AddToggle("tj_all", { Text="All Weapons", Default=false, Callback=function(v) VIS.trajectory.all_weapons=v end })
-tjBox:AddSlider("tj_speed", { Text="Throw Speed", Min=20, Max=300, Default=90, Rounding=0, Callback=function(v) VIS.trajectory.speed=v end })
-tjBox:AddSlider("tj_arc", { Text="Arc Height", Min=0, Max=60, Default=10, Rounding=0, Callback=function(v) VIS.trajectory.arc_up=v end })
-tjBox:AddSlider("tj_r", { Text="R", Min=0, Max=255, Default=120, Rounding=0, Callback=function(v) local c=VIS.trajectory.color; VIS.trajectory.color=C3(v,c.G*255,c.B*255) end })
-tjBox:AddSlider("tj_g", { Text="G", Min=0, Max=255, Default=81, Rounding=0, Callback=function(v) local c=VIS.trajectory.color; VIS.trajectory.color=C3(c.R*255,v,c.B*255) end })
-tjBox:AddSlider("tj_b", { Text="B", Min=0, Max=255, Default=166, Rounding=0, Callback=function(v) local c=VIS.trajectory.color; VIS.trajectory.color=C3(c.R*255,c.G*255,v) end })
-
 -- ============ DEATH EFFECTS ============
 local deBox = tabs.visual:AddLeftGroupbox("Death Effects")
 
@@ -767,91 +608,6 @@ deBox:AddSlider("de_r", { Text="R", Min=0, Max=255, Default=120, Rounding=0, Cal
 deBox:AddSlider("de_g", { Text="G", Min=0, Max=255, Default=81, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,v,c.B*255) end })
 deBox:AddSlider("de_b", { Text="B", Min=0, Max=255, Default=166, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,c.G*255,v) end })
 
--- ============ DAMAGE NUMBERS ============
-local dmgBox = tabs.visual:AddRightGroupbox("Damage Numbers")
-local dmgGui = Instance.new("ScreenGui"); dmgGui.Name="secret_dmg"; dmgGui.ResetOnSpawn=false; dmgGui.IgnoreGuiInset=true; dmgGui.DisplayOrder=500
-pcall(function() dmgGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
-
-local function fontFromName(n)
-    local ok, f = pcall(function() return Enum.Font[n] end)
-    return ok and f or Enum.Font.GothamBold
-end
-
-local function spawnDamageNumber(damage, worldpos)
-    local c = VIS.damage_numbers
-    if not c.enable or not worldpos then return end
-    local sp, on = Camera:WorldToViewportPoint(worldpos)
-    if not on then return end
-    local lbl = Instance.new("TextLabel")
-    lbl.BackgroundTransparency=1; lbl.Size=UDim2.fromOffset(140,26)
-    lbl.AnchorPoint=Vector2.new(0.5,0.5)
-    lbl.Position=UDim2.fromOffset(sp.X, sp.Y)
-    lbl.Font=fontFromName(c.font); lbl.TextSize=c.text_size
-    lbl.Text="-"..tostring(math.floor(damage + 0.5))
-    lbl.TextStrokeTransparency=1; lbl.TextColor3=c.color1; lbl.ZIndex=10
-    lbl.Parent=dmgGui
-    local stroke = Instance.new("UIStroke", lbl)
-    stroke.Thickness=1.5; stroke.Color=Color3.new(); stroke.Transparency=0.15
-    local scale = Instance.new("UIScale", lbl); scale.Scale=0.5
-    if c.color_type == "Gradient" then
-        local grad = Instance.new("UIGradient", lbl)
-        grad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, c.color1), ColorSequenceKeypoint.new(1, c.color2) })
-        grad.Rotation = 90; lbl.TextColor3 = Color3.new(1,1,1)
-    end
-    local startX, startY = sp.X, sp.Y
-    local jitter = math.random(-14,14)
-    local start = tick()
-    local conn
-    conn = RunService.RenderStepped:Connect(function()
-        local t = (tick() - start) / c.duration
-        if t >= 1 then conn:Disconnect(); pcall(function() lbl:Destroy() end); return end
-        local ease = 1 - (1-t)*(1-t)*(1-t)
-        if c.color_type == "Rainbow" then lbl.TextColor3 = Color3.fromHSV((tick()*0.6)%1, 0.75, 1) end
-        local s
-        if t < 0.16 then s = 0.5 + (t/0.16)*0.62 else s = 1.12 - ((t-0.16)/0.84)*0.12 end
-        scale.Scale = s
-        local fade = t < 0.55 and 0 or (t-0.55)/0.45
-        lbl.Position = UDim2.fromOffset(startX + jitter*ease, startY - c.rise*ease)
-        lbl.TextTransparency = fade
-        stroke.Transparency = 0.15 + 0.85*fade
-    end)
-end
-
-pcall(function()
-    if not fighter_controller then return end
-    local local_fighter = fighter_controller.LocalFighter
-    if not local_fighter or not local_fighter.ReplicateFromServer then return end
-    local old = local_fighter.ReplicateFromServer
-    local_fighter.ReplicateFromServer = function(controller, _type, ...)
-        if _type == "DamageNumberEffect" and VIS.damage_numbers.enable then
-            local args = {...}
-            local hit_root, hit_damage, is_headshot = args[1], args[2], args[3]
-            if hit_root and hit_damage then
-                local ok, pos = pcall(function()
-                    return hit_root.Position + Vector3.new(0, is_headshot and 2.6 or 2.1, 0)
-                end)
-                spawnDamageNumber(hit_damage, ok and pos or nil)
-                if VIS.damage_numbers.remove_ingame then return end
-            end
-        end
-        return old(controller, _type, ...)
-    end
-end)
-
-dmgBox:AddToggle("dmg_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.damage_numbers.enable=v end })
-dmgBox:AddToggle("dmg_remove", { Text="Remove In-Game", Default=false, Callback=function(v) VIS.damage_numbers.remove_ingame=v end })
-dmgBox:AddDropdown("dmg_colortype", { Text="Color Type", Values={"Gradient","Solid","Rainbow"}, Default="Gradient", Callback=function(v) VIS.damage_numbers.color_type=v end })
-dmgBox:AddSlider("dmg_c1_r", { Text="Color1 R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(v,c.G*255,c.B*255) end })
-dmgBox:AddSlider("dmg_c1_g", { Text="Color1 G", Min=0, Max=255, Default=80, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(c.R*255,v,c.B*255) end })
-dmgBox:AddSlider("dmg_c1_b", { Text="Color1 B", Min=0, Max=255, Default=80, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(c.R*255,c.G*255,v) end })
-dmgBox:AddSlider("dmg_c2_r", { Text="Color2 R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(v,c.G*255,c.B*255) end })
-dmgBox:AddSlider("dmg_c2_g", { Text="Color2 G", Min=0, Max=255, Default=210, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(c.R*255,v,c.B*255) end })
-dmgBox:AddSlider("dmg_c2_b", { Text="Color2 B", Min=0, Max=255, Default=90, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(c.R*255,c.G*255,v) end })
-dmgBox:AddDropdown("dmg_font", { Text="Font", Values={"GothamBold","GothamBlack","Code","SourceSansBold","RobotoMono","Arcade","SciFi","Cartoon","Bangers","Michroma"}, Default="GothamBold", Callback=function(v) VIS.damage_numbers.font=v end })
-dmgBox:AddSlider("dmg_size", { Text="Text Size", Min=10, Max=40, Default=18, Rounding=0, Callback=function(v) VIS.damage_numbers.text_size=v end })
-dmgBox:AddSlider("dmg_rise", { Text="Rise", Min=0, Max=120, Default=42, Rounding=0, Callback=function(v) VIS.damage_numbers.rise=v end })
-dmgBox:AddSlider("dmg_dur", { Text="Duration", Min=0.2, Max=3, Default=0.8, Rounding=2, Callback=function(v) VIS.damage_numbers.duration=v end })
-
 -- ============ HITSOUNDS ============
 local hsBox = tabs.visual:AddLeftGroupbox("Hit Sounds")
 local hitsoundMap = {
@@ -889,55 +645,10 @@ hsBox:AddDropdown("hs_sel", { Text="Sound", Values={"windows xp","minecraft bow"
 hsBox:AddSlider("hs_vol", { Text="Volume", Min=0, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hitsounds.volume=v end })
 hsBox:AddSlider("hs_pitch", { Text="Pitch", Min=0.5, Max=1.5, Default=1, Rounding=1, Callback=function(v) VIS.hitsounds.pitch=v end })
 
--- ============ HIT NOTIFY ============
-local hnBox = tabs.visual:AddLeftGroupbox("Hit Notify")
-
-pcall(function()
-    if not fighter_controller then return end
-    local lf = fighter_controller.LocalFighter
-    if not lf or not lf.ReplicateFromServer then return end
-    local old = lf.ReplicateFromServer
-    lf.ReplicateFromServer = function(controller, _type, ...)
-        if _type == "DamageNumberEffect" and VIS.hit_notify.enable then
-            local args = {...}
-            local hit_root, hit_damage = args[1], args[2]
-            if hit_root and hit_damage then
-                local msg = VIS.hit_notify.msg or "Hit {target} for {damage}"
-                local target = "?"
-                pcall(function()
-                    local char = hit_root.Parent
-                    local plr = Players:GetPlayerFromCharacter(char)
-                    target = plr and plr.Name or (char and char.Name) or "?"
-                end)
-                msg = msg:gsub("{target}", target)
-                msg = msg:gsub("{damage}", tostring(math.floor(hit_damage + 0.5)))
-                msg = msg:gsub("{hitpart}", hit_root.Name or "?")
-                pcall(function() Library:Notify(msg, VIS.hit_notify.duration) end)
-            end
-        end
-        return old(controller, _type, ...)
-    end
-end)
-
-hnBox:AddToggle("hn_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.hit_notify.enable=v end })
-hnBox:AddSlider("hn_dur", { Text="Duration", Min=1, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hit_notify.duration=v end })
-hnBox:AddInput("hn_msg", {
-    Text = "Message",
-    Default = "Hit {target} for {damage}",
-    Finished = true,
-    Numeric = false,
-    Callback = function(v) VIS.hit_notify.msg = v end,
-})
-hnBox:AddLabel("Formats: {target}, {damage}, {hitpart}")
-
 -- ============ VIEWMODEL CHAMS ============
 local vmcBox = tabs.visual:AddLeftGroupbox("Viewmodel Chams")
 local vmTrack, vmHL = {}, {}
 
-local function vmIsArm(p)
-    local n = string.lower(p.Name)
-    return n:find("arm",1,true) or n:find("hand",1,true)
-end
 local function vmVisible(p) return p.Transparency < 1 and p.Size.Magnitude < 40 end
 
 local function vmStore(p)
@@ -975,25 +686,14 @@ RunService.Heartbeat:Connect(function()
     local vmc = VIS.viewmodel
     for _, p in ipairs(first:GetDescendants()) do
         if p:IsA("BasePart") and vmVisible(p) then
-            local isArm = vmIsArm(p)
-            if isArm and vmc.arm_chams.enable then
-                vmStore(p)
-                if vmc.arm_chams.invisible then p.Transparency=1; p.LocalTransparencyModifier=1
-                else
-                    p.Material = Enum.Material[vmc.arm_chams.material] or Enum.Material.Neon
-                    p.Color = vmc.arm_chams.color
-                    p.Transparency = vmc.arm_chams.transparency
-                    p.Reflectance = 0
-                end
-            elseif not isArm and vmc.weapon_chams.enable then
+            if vmc.weapon_chams.enable then
                 vmStore(p)
                 p.Material = Enum.Material[vmc.weapon_chams.material] or Enum.Material.Neon
                 p.Color = vmc.weapon_chams.color
                 p.Transparency = vmc.weapon_chams.transparency
                 p.Reflectance = 0
             else vmRestore(p) end
-            if isArm and vmc.arm_highlight.enable then vmSetHL(p, vmc.arm_highlight)
-            elseif not isArm and vmc.weapon_highlight.enable then vmSetHL(p, vmc.weapon_highlight)
+            if vmc.weapon_highlight.enable then vmSetHL(p, vmc.weapon_highlight)
             else vmDropHL(p) end
         end
     end
@@ -1006,20 +706,10 @@ vmcBox:AddSlider("vmc_w_g", { Text="Weapon G", Min=0, Max=255, Default=255, Roun
 vmcBox:AddSlider("vmc_w_b", { Text="Weapon B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.weapon_chams.color; VIS.viewmodel.weapon_chams.color=C3(c.R*255,c.G*255,v) end })
 vmcBox:AddSlider("vmc_w_t", { Text="Weapon Transparency", Min=0, Max=1, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.weapon_chams.transparency=v end })
 
-vmcBox:AddToggle("vmc_a_enable", { Text="Arm Chams", Default=false, Callback=function(v) VIS.viewmodel.arm_chams.enable=v end })
-vmcBox:AddDropdown("vmc_a_mat", { Text="Arm Material", Values={"Neon","ForceField","Glass","Ice","Plastic"}, Default="Neon", Callback=function(v) VIS.viewmodel.arm_chams.material=v end })
-vmcBox:AddSlider("vmc_a_r", { Text="Arm R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.arm_chams.color; VIS.viewmodel.arm_chams.color=C3(v,c.G*255,c.B*255) end })
-vmcBox:AddSlider("vmc_a_g", { Text="Arm G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.arm_chams.color; VIS.viewmodel.arm_chams.color=C3(c.R*255,v,c.B*255) end })
-vmcBox:AddSlider("vmc_a_b", { Text="Arm B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.arm_chams.color; VIS.viewmodel.arm_chams.color=C3(c.R*255,c.G*255,v) end })
-vmcBox:AddSlider("vmc_a_t", { Text="Arm Transparency", Min=0, Max=1, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.arm_chams.transparency=v end })
-vmcBox:AddToggle("vmc_a_inv", { Text="Invisible Arms", Default=false, Callback=function(v) VIS.viewmodel.arm_chams.invisible=v end })
-
 vmcBox:AddToggle("vmc_wh_enable", { Text="Weapon Highlight", Default=false, Callback=function(v) VIS.viewmodel.weapon_highlight.enable=v end })
 vmcBox:AddSlider("vmc_wh_t", { Text="WH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.weapon_highlight.transparency=v end })
-vmcBox:AddToggle("vmc_ah_enable", { Text="Arm Highlight", Default=false, Callback=function(v) VIS.viewmodel.arm_highlight.enable=v end })
-vmcBox:AddSlider("vmc_ah_t", { Text="AH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.arm_highlight.transparency=v end })
 
--- ============ VIEWMODEL OFFSETS ============
+-- ============ VIEWMODEL OFFSETS (with restore on disable) ============
 local vmoBox = tabs.visual:AddRightGroupbox("Viewmodel Offsets")
 local vmOldOffsets = {}
 
@@ -1029,106 +719,53 @@ local function applyVmoOffsets()
         if vm.RootPartOffset then
             if not vmOldOffsets[i] then vmOldOffsets[i] = vm.RootPartOffset end
             local o = vmOldOffsets[i]
-            vm.RootPartOffset = CFrame.new(o.X + VIS.viewmodel.offsets.x, o.Y + VIS.viewmodel.offsets.y, o.Z + VIS.viewmodel.offsets.z)
+            vm.RootPartOffset = CFrame.new(
+                o.X + VIS.viewmodel.offsets.x,
+                o.Y + VIS.viewmodel.offsets.y,
+                o.Z + VIS.viewmodel.offsets.z
+            )
         end
     end
 end
 
+local function restoreVmoOffsets()
+    if not item_lib or not item_lib.ViewModels then return end
+    for i, vm in pairs(item_lib.ViewModels) do
+        local orig = vmOldOffsets[i]
+        if orig and vm.RootPartOffset then
+            vm.RootPartOffset = orig
+        end
+    end
+    vmOldOffsets = {}
+end
+
 RunService.Heartbeat:Connect(function()
-    if VIS.viewmodel.offsets.enable then applyVmoOffsets() end
+    if VIS.viewmodel.offsets.enable then
+        applyVmoOffsets()
+    end
 end)
 
-vmoBox:AddToggle("vmo_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.viewmodel.offsets.enable=v end })
-vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.x=v end })
-vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
-vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
-
--- ============ VIEWMODEL CUSTOM (FIXED) ============
-local vmcustBox = tabs.visual:AddRightGroupbox("Viewmodel Custom")
-local custTracked = {}
-
-vmcustBox:AddToggle("vmcust_enable", {
-    Text = "Enable Body/Item Customization",
+vmoBox:AddToggle("vmo_enable", {
+    Text = "Enabled",
     Default = false,
-    Callback = function(v) VIS.viewmodel.custom_body.enable = v end,
-})
-
-RunService.Heartbeat:Connect(function()
-    local b = VIS.viewmodel.custom_body
-    local it = VIS.viewmodel.custom_item
-    local ch = LocalPlayer.Character
-
-    if not b.enable or not ch then
-        for p, d in pairs(custTracked) do
-            if p.Parent then
-                p.Material = d.m; p.Color = d.c; p.Transparency = d.t
-            end
-        end
-        custTracked = {}
-        return
-    end
-
-    for _, p in ipairs(ch:GetDescendants()) do
-        if p:IsA("BasePart")
-           and p.Name ~= "HumanoidRootPart"
-           and not p.Name:find("Hitbox") then
-            local saved = custTracked[p]
-            if not saved then
-                saved = { m = p.Material, c = p.Color, t = p.Transparency }
-                custTracked[p] = saved
-            end
-            if saved.t < 1 then
-                if b.material_enable then p.Material = Enum.Material[b.material] or p.Material end
-                if b.color_enable then p.Color = b.color end
-                if b.transparency > 0 then
-                    p.Transparency = math.clamp(b.transparency / 100, 0, 1)
-                end
-            end
-        end
-    end
-
-    if b.disable_clothes then
-        for _, p in ipairs(ch:GetDescendants()) do
-            if p:IsA("Shirt") then p.ShirtTemplate = "" end
-            if p:IsA("Pants") then p.PantsTemplate = "" end
-            if p:IsA("ShirtGraphic") then p.Graphic = "" end
-        end
-    end
-
-    local fp = workspace:FindFirstChild("ViewModels")
-    local first = fp and fp:FindFirstChild("FirstPerson")
-    if first then
-        for _, p in ipairs(first:GetDescendants()) do
-            if p:IsA("BasePart") then
-                local n = string.lower(p.Name)
-                if not (n:find("arm", 1, true) or n:find("hand", 1, true)) then
-                    if it.material_enable then p.Material = Enum.Material[it.material] or p.Material end
-                    if it.color_enable then p.Color = it.color end
-                    if it.transparency > 0 then
-                        p.Transparency = math.clamp(it.transparency / 100, 0, 1)
+    Callback = function(v)
+        VIS.viewmodel.offsets.enable = v
+        if v then
+            if item_lib and item_lib.ViewModels then
+                for i, vm in pairs(item_lib.ViewModels) do
+                    if vm.RootPartOffset and not vmOldOffsets[i] then
+                        vmOldOffsets[i] = vm.RootPartOffset
                     end
                 end
             end
+        else
+            restoreVmoOffsets()
         end
-    end
-end)
-
-vmcustBox:AddToggle("vmcust_body_color", { Text="Body Color", Default=false, Callback=function(v) VIS.viewmodel.custom_body.color_enable=v end })
-vmcustBox:AddSlider("vmcust_body_r", { Text="Body R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_body.color; VIS.viewmodel.custom_body.color=C3(v,c.G*255,c.B*255) end })
-vmcustBox:AddSlider("vmcust_body_g", { Text="Body G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_body.color; VIS.viewmodel.custom_body.color=C3(c.R*255,v,c.B*255) end })
-vmcustBox:AddSlider("vmcust_body_b", { Text="Body B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_body.color; VIS.viewmodel.custom_body.color=C3(c.R*255,c.G*255,v) end })
-vmcustBox:AddToggle("vmcust_body_mat_en", { Text="Body Material", Default=false, Callback=function(v) VIS.viewmodel.custom_body.material_enable=v end })
-vmcustBox:AddDropdown("vmcust_body_mat", { Text="Material", Values={"ForceField","Neon","Plastic","SmoothPlastic","Wood","Marble","Slate"}, Default="ForceField", Callback=function(v) VIS.viewmodel.custom_body.material=v end })
-vmcustBox:AddToggle("vmcust_body_clothes", { Text="Disable Clothes", Default=false, Callback=function(v) VIS.viewmodel.custom_body.disable_clothes=v end })
-vmcustBox:AddSlider("vmcust_body_trans", { Text="Body Transparency", Min=0, Max=100, Default=0, Rounding=0, Callback=function(v) VIS.viewmodel.custom_body.transparency=v end })
-
-vmcustBox:AddToggle("vmcust_item_color", { Text="Item Color", Default=false, Callback=function(v) VIS.viewmodel.custom_item.color_enable=v end })
-vmcustBox:AddSlider("vmcust_item_r", { Text="Item R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_item.color; VIS.viewmodel.custom_item.color=C3(v,c.G*255,c.B*255) end })
-vmcustBox:AddSlider("vmcust_item_g", { Text="Item G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_item.color; VIS.viewmodel.custom_item.color=C3(c.R*255,v,c.B*255) end })
-vmcustBox:AddSlider("vmcust_item_b", { Text="Item B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_item.color; VIS.viewmodel.custom_item.color=C3(c.R*255,c.G*255,v) end })
-vmcustBox:AddToggle("vmcust_item_mat_en", { Text="Item Material", Default=false, Callback=function(v) VIS.viewmodel.custom_item.material_enable=v end })
-vmcustBox:AddDropdown("vmcust_item_mat", { Text="Item Material", Values={"ForceField","Neon","Plastic","SmoothPlastic","Wood","Marble","Slate"}, Default="ForceField", Callback=function(v) VIS.viewmodel.custom_item.material=v end })
-vmcustBox:AddSlider("vmcust_item_trans", { Text="Item Transparency", Min=0, Max=100, Default=0, Rounding=0, Callback=function(v) VIS.viewmodel.custom_item.transparency=v end })
+    end,
+})
+vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.x=v end })
+vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
+vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
 
 -- ============ SKYBOX ============
 local SkyboxPresets = {
@@ -1218,12 +855,23 @@ SkyboxSection:AddToggle("skybox_rotate", { Text="Auto Rotate", Default=false, Ca
 end })
 SkyboxSection:AddSlider("skybox_rot_speed", { Text="Rotate Speed", Min=1, Max=100, Default=10, Rounding=0, Callback=function(value) skyboxData.rotate_speed=value end })
 
-task.defer(function()
-    task.wait(0.5)
-    fetchBg()
-    task.wait(0.1)
-    stripAlpha(getWin())
-    nukeBlue(Library.ScreenGui)
+task.spawn(function()
+    for i = 1, 20 do
+        task.wait(0.5)
+        if loadBackground() then
+            Library:Notify("bg loaded", 3)
+            break
+        end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        local w = getWin()
+        if w and not w:FindFirstChild("sbg") then
+            applyBackground()
+        end
+    end
 end)
 
 Library:Notify("Secret loaded", 3)
