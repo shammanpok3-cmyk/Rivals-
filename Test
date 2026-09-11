@@ -1,36 +1,16 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shammanpok3-cmyk/Rivals-/refs/heads/main/UElib"))()
 
--- ===== RIVALS MODULE REQUIRES (non-blocking) =====
+-- ===== RIVALS MODULE REQUIRES =====
 local replicated_storage = game:GetService("ReplicatedStorage")
-local item_lib, fighter_controller, client_viewmodel
-
-task.spawn(function()
-    local modules = replicated_storage:WaitForChild("Modules", 10)
-    if not modules then return end
-    pcall(function() item_lib = require(modules.ItemLibrary) end)
+local modules = replicated_storage:WaitForChild("Modules", 10)
+local item_lib, enum_lib, fighter_controller, client_viewmodel
+pcall(function() item_lib = require(modules.ItemLibrary) end)
+pcall(function() enum_lib = require(modules.EnumLibrary) end)
+pcall(function() fighter_controller = require(game:GetService("Players").LocalPlayer.PlayerScripts.Controllers.FighterController) end)
+pcall(function()
+    client_viewmodel = require(game:GetService("Players").LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
 end)
-
-task.spawn(function()
-    local path = game:GetService("Players").LocalPlayer
-        :WaitForChild("PlayerScripts", 10)
-        :WaitForChild("Controllers", 10)
-        :WaitForChild("FighterController", 10)
-    if not path then return end
-    pcall(function() fighter_controller = require(path) end)
-end)
-
-task.spawn(function()
-    local path = game:GetService("Players").LocalPlayer
-        :WaitForChild("PlayerScripts", 10)
-        :WaitForChild("Modules", 10)
-        :WaitForChild("ClientReplicatedClasses", 10)
-        :WaitForChild("ClientFighter", 10)
-        :WaitForChild("ClientItem", 10)
-        :WaitForChild("ClientViewModel", 10)
-    if not path then return end
-    pcall(function() client_viewmodel = require(path) end)
-end)
--- ===================================================
+-- ===================================
 
 local t = Library.Theme
 if t then
@@ -136,19 +116,6 @@ local function nukeBlue(root)
     end
 end
 
-local function getGuiParent()
-    if gethui then
-        local ok, h = pcall(gethui)
-        if ok and h then return h end
-    end
-    local ok, cg = pcall(function() return game:GetService("CoreGui") end)
-    if ok and cg then
-        local test = pcall(function() local t = Instance.new("Folder"); t.Parent = cg; t:Destroy() end)
-        if test then return cg end
-    end
-    return game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-end
-
 local win = Library:CreateWindow({ Title = "Secret | Rivals", Center = true, AutoShow = true })
 local tabs = { main = win:AddTab("Main"), visual = win:AddTab("Visual") }
 
@@ -166,6 +133,7 @@ local Lighting     = game:GetService("Lighting")
 local Debris       = game:GetService("Debris")
 local LocalPlayer  = Players.LocalPlayer
 local Camera       = workspace.CurrentCamera
+local Mouse        = LocalPlayer:GetMouse()
 
 local function C3(r,g,b) return Color3.fromRGB(math.clamp(r or 0,0,255), math.clamp(g or 0,0,255), math.clamp(b or 0,0,255)) end
 
@@ -196,7 +164,11 @@ local VIS = {
     trajectory = { enable=false, all_weapons=false, speed=90, arc_up=10,
         color=Color3.fromRGB(120,81,166) },
     death_effects = { enable=false, type="Explosion", color=Color3.fromRGB(120,81,166) },
+    damage_numbers = { enable=false, remove_ingame=false, color_type="Gradient",
+        color1=Color3.fromRGB(255,80,80), color2=Color3.fromRGB(255,210,90),
+        font="GothamBold", duration=0.8, rise=42, text_size=18 },
     hitsounds = { enable=false, remove_default=false, volume=3, pitch=1, selected="windows xp" },
+    hit_notify = { enable=false, duration=3, msg="Hit {target} for {damage}" },
     viewmodel = {
         weapon_chams = { enable=false, color=Color3.new(1,1,1), material="Neon", transparency=0 },
         arm_chams = { enable=false, color=Color3.new(1,1,1), material="Neon", transparency=0, invisible=false },
@@ -313,7 +285,7 @@ local chDot   = Drawing.new("Circle"); chDot.Filled=true; chDot.NumSides=24; chD
 
 local chGui = Instance.new("ScreenGui")
 chGui.Name="secret_crosshair"; chGui.ResetOnSpawn=false; chGui.IgnoreGuiInset=true; chGui.DisplayOrder=999
-chGui.Parent = getGuiParent()
+pcall(function() chGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
 
 local chText = Instance.new("TextLabel")
 chText.BackgroundTransparency=1; chText.AnchorPoint=Vector2.new(0.5,0)
@@ -519,9 +491,7 @@ mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Roun
 -- ============ DISABLE ANIMATIONS ============
 local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
 
-task.spawn(function()
-    task.wait(2)
-    if not client_viewmodel or not client_viewmodel.Update then return end
+if client_viewmodel and client_viewmodel.Update then
     local old = client_viewmodel.Update
     client_viewmodel.Update = function(c, dt, movement_state, render_data)
         local cfg = VIS.disable_anims
@@ -535,25 +505,42 @@ task.spawn(function()
                 c._landing_spring.Value = 0; c._landing_spring.Target = 0
                 c._jump_spring.Value = 0; c._jump_spring.Target = 0
             end
-            if s.sliding and movement_state then movement_state.IsSliding = false end
+            if s.sway and c._sway_spring then
+                c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
+                c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
+            end
+            if s.inspect and c._inspect_spring then
+                c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
+            end
+            if s.sliding and movement_state then
+                movement_state.IsSliding = false
+            end
             if s.shoot and c._recoil_spring then
                 c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
                 c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
             end
+            if s.impulse and c._impulse_position_spring then
+                c._impulse_position_spring.Value = Vector3.new(0,0,0); c._impulse_position_spring.Target = Vector3.new(0,0,0)
+            end
             if s.aim and c._aim_spring then
                 c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
             end
-            if s.sprint and movement_state then movement_state.IsActuallySprinting = false end
+            if s.sprint and movement_state then
+                movement_state.IsActuallySprinting = false
+            end
         end
         return old(c, dt, movement_state, render_data)
     end
-end)
+end
 
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
 daBox:AddToggle("da_bobbing", { Text="Bobbing", Default=false, Callback=function(v) VIS.disable_anims.select.bobbing=v end })
 daBox:AddToggle("da_landing", { Text="Landing", Default=false, Callback=function(v) VIS.disable_anims.select.landing=v end })
+daBox:AddToggle("da_sway", { Text="Sway", Default=false, Callback=function(v) VIS.disable_anims.select.sway=v end })
+daBox:AddToggle("da_inspect", { Text="Inspect", Default=false, Callback=function(v) VIS.disable_anims.select.inspect=v end })
 daBox:AddToggle("da_sliding", { Text="Sliding", Default=false, Callback=function(v) VIS.disable_anims.select.sliding=v end })
 daBox:AddToggle("da_shoot", { Text="Shoot", Default=false, Callback=function(v) VIS.disable_anims.select.shoot=v end })
+daBox:AddToggle("da_impulse", { Text="Impulse", Default=false, Callback=function(v) VIS.disable_anims.select.impulse=v end })
 daBox:AddToggle("da_aim", { Text="Aim", Default=false, Callback=function(v) VIS.disable_anims.select.aim=v end })
 daBox:AddToggle("da_sprint", { Text="Sprint", Default=false, Callback=function(v) VIS.disable_anims.select.sprint=v end })
 
@@ -595,28 +582,24 @@ local function createBeam(from, to)
     end)
 end
 
-task.spawn(function()
-    task.wait(3)
-    pcall(function()
-        local tp = LocalPlayer.PlayerScripts:WaitForChild("Modules", 5)
-        tp = tp and tp:WaitForChild("TracerEffect", 5)
-        if not tp then return end
-        local mod = require(tp)
-        local old = mod.Play
-        mod.Play = function(...)
-            local args = {...}
-            if VIS.tracers.enable and args[2] and args[2].IsLocal then
-                local muzzle = args[4] and args[4].MuzzlePosition
-                if muzzle and args[2].RaycastResults then
-                    for _, v in ipairs(args[2].RaycastResults) do
-                        if v.Position then createBeam(muzzle, v.Position) end
-                    end
+pcall(function()
+    local tp = LocalPlayer.PlayerScripts.Modules.TracerEffect
+    if not tp then return end
+    local mod = require(tp)
+    local old = mod.Play
+    mod.Play = function(...)
+        local args = {...}
+        if VIS.tracers.enable and args[2] and args[2].IsLocal then
+            local muzzle = args[4] and args[4].MuzzlePosition
+            if muzzle and args[2].RaycastResults then
+                for _, v in ipairs(args[2].RaycastResults) do
+                    if v.Position then createBeam(muzzle, v.Position) end
                 end
-                if not VIS.tracers.through_walls then return end
             end
-            return old(...)
+            if not VIS.tracers.through_walls then return end
         end
-    end)
+        return old(...)
+    end
 end)
 
 btBox:AddToggle("bt_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.tracers.enable=v end })
@@ -637,7 +620,7 @@ btBox:AddToggle("bt_walls", { Text="Through Walls", Default=false, Callback=func
 local hudBox = tabs.visual:AddRightGroupbox("Target HUD")
 local hudGui = Instance.new("ScreenGui")
 hudGui.Name="secret_hud"; hudGui.ResetOnSpawn=false; hudGui.IgnoreGuiInset=true; hudGui.DisplayOrder=998
-hudGui.Parent = getGuiParent()
+pcall(function() hudGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
 local hudFrame = Instance.new("Frame")
 hudFrame.Size=UDim2.fromOffset(240,64); hudFrame.Position=UDim2.fromOffset(14,100)
 hudFrame.BackgroundColor3=Color3.fromRGB(18,18,18)
@@ -784,6 +767,91 @@ deBox:AddSlider("de_r", { Text="R", Min=0, Max=255, Default=120, Rounding=0, Cal
 deBox:AddSlider("de_g", { Text="G", Min=0, Max=255, Default=81, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,v,c.B*255) end })
 deBox:AddSlider("de_b", { Text="B", Min=0, Max=255, Default=166, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,c.G*255,v) end })
 
+-- ============ DAMAGE NUMBERS ============
+local dmgBox = tabs.visual:AddRightGroupbox("Damage Numbers")
+local dmgGui = Instance.new("ScreenGui"); dmgGui.Name="secret_dmg"; dmgGui.ResetOnSpawn=false; dmgGui.IgnoreGuiInset=true; dmgGui.DisplayOrder=500
+pcall(function() dmgGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
+
+local function fontFromName(n)
+    local ok, f = pcall(function() return Enum.Font[n] end)
+    return ok and f or Enum.Font.GothamBold
+end
+
+local function spawnDamageNumber(damage, worldpos)
+    local c = VIS.damage_numbers
+    if not c.enable or not worldpos then return end
+    local sp, on = Camera:WorldToViewportPoint(worldpos)
+    if not on then return end
+    local lbl = Instance.new("TextLabel")
+    lbl.BackgroundTransparency=1; lbl.Size=UDim2.fromOffset(140,26)
+    lbl.AnchorPoint=Vector2.new(0.5,0.5)
+    lbl.Position=UDim2.fromOffset(sp.X, sp.Y)
+    lbl.Font=fontFromName(c.font); lbl.TextSize=c.text_size
+    lbl.Text="-"..tostring(math.floor(damage + 0.5))
+    lbl.TextStrokeTransparency=1; lbl.TextColor3=c.color1; lbl.ZIndex=10
+    lbl.Parent=dmgGui
+    local stroke = Instance.new("UIStroke", lbl)
+    stroke.Thickness=1.5; stroke.Color=Color3.new(); stroke.Transparency=0.15
+    local scale = Instance.new("UIScale", lbl); scale.Scale=0.5
+    if c.color_type == "Gradient" then
+        local grad = Instance.new("UIGradient", lbl)
+        grad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, c.color1), ColorSequenceKeypoint.new(1, c.color2) })
+        grad.Rotation = 90; lbl.TextColor3 = Color3.new(1,1,1)
+    end
+    local startX, startY = sp.X, sp.Y
+    local jitter = math.random(-14,14)
+    local start = tick()
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        local t = (tick() - start) / c.duration
+        if t >= 1 then conn:Disconnect(); pcall(function() lbl:Destroy() end); return end
+        local ease = 1 - (1-t)*(1-t)*(1-t)
+        if c.color_type == "Rainbow" then lbl.TextColor3 = Color3.fromHSV((tick()*0.6)%1, 0.75, 1) end
+        local s
+        if t < 0.16 then s = 0.5 + (t/0.16)*0.62 else s = 1.12 - ((t-0.16)/0.84)*0.12 end
+        scale.Scale = s
+        local fade = t < 0.55 and 0 or (t-0.55)/0.45
+        lbl.Position = UDim2.fromOffset(startX + jitter*ease, startY - c.rise*ease)
+        lbl.TextTransparency = fade
+        stroke.Transparency = 0.15 + 0.85*fade
+    end)
+end
+
+pcall(function()
+    if not fighter_controller then return end
+    local local_fighter = fighter_controller.LocalFighter
+    if not local_fighter or not local_fighter.ReplicateFromServer then return end
+    local old = local_fighter.ReplicateFromServer
+    local_fighter.ReplicateFromServer = function(controller, _type, ...)
+        if _type == "DamageNumberEffect" and VIS.damage_numbers.enable then
+            local args = {...}
+            local hit_root, hit_damage, is_headshot = args[1], args[2], args[3]
+            if hit_root and hit_damage then
+                local ok, pos = pcall(function()
+                    return hit_root.Position + Vector3.new(0, is_headshot and 2.6 or 2.1, 0)
+                end)
+                spawnDamageNumber(hit_damage, ok and pos or nil)
+                if VIS.damage_numbers.remove_ingame then return end
+            end
+        end
+        return old(controller, _type, ...)
+    end
+end)
+
+dmgBox:AddToggle("dmg_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.damage_numbers.enable=v end })
+dmgBox:AddToggle("dmg_remove", { Text="Remove In-Game", Default=false, Callback=function(v) VIS.damage_numbers.remove_ingame=v end })
+dmgBox:AddDropdown("dmg_colortype", { Text="Color Type", Values={"Gradient","Solid","Rainbow"}, Default="Gradient", Callback=function(v) VIS.damage_numbers.color_type=v end })
+dmgBox:AddSlider("dmg_c1_r", { Text="Color1 R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(v,c.G*255,c.B*255) end })
+dmgBox:AddSlider("dmg_c1_g", { Text="Color1 G", Min=0, Max=255, Default=80, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(c.R*255,v,c.B*255) end })
+dmgBox:AddSlider("dmg_c1_b", { Text="Color1 B", Min=0, Max=255, Default=80, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(c.R*255,c.G*255,v) end })
+dmgBox:AddSlider("dmg_c2_r", { Text="Color2 R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(v,c.G*255,c.B*255) end })
+dmgBox:AddSlider("dmg_c2_g", { Text="Color2 G", Min=0, Max=255, Default=210, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(c.R*255,v,c.B*255) end })
+dmgBox:AddSlider("dmg_c2_b", { Text="Color2 B", Min=0, Max=255, Default=90, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(c.R*255,c.G*255,v) end })
+dmgBox:AddDropdown("dmg_font", { Text="Font", Values={"GothamBold","GothamBlack","Code","SourceSansBold","RobotoMono","Arcade","SciFi","Cartoon","Bangers","Michroma"}, Default="GothamBold", Callback=function(v) VIS.damage_numbers.font=v end })
+dmgBox:AddSlider("dmg_size", { Text="Text Size", Min=10, Max=40, Default=18, Rounding=0, Callback=function(v) VIS.damage_numbers.text_size=v end })
+dmgBox:AddSlider("dmg_rise", { Text="Rise", Min=0, Max=120, Default=42, Rounding=0, Callback=function(v) VIS.damage_numbers.rise=v end })
+dmgBox:AddSlider("dmg_dur", { Text="Duration", Min=0.2, Max=3, Default=0.8, Rounding=2, Callback=function(v) VIS.damage_numbers.duration=v end })
+
 -- ============ HITSOUNDS ============
 local hsBox = tabs.visual:AddLeftGroupbox("Hit Sounds")
 local hitsoundMap = {
@@ -800,9 +868,8 @@ local hitsoundMap = {
 }
 local hsSound = Instance.new("Sound"); hsSound.Name="secret_hitsound"; hsSound.Volume=1; hsSound.Parent=SoundService
 
-task.spawn(function()
-    task.wait(3)
-    if not client_viewmodel or not client_viewmodel.PlayHitmarkerSound then return end
+pcall(function()
+    if not client_viewmodel then return end
     local old = client_viewmodel.PlayHitmarkerSound
     client_viewmodel.PlayHitmarkerSound = function(self, crit, pitch)
         if VIS.hitsounds.enable and VIS.hitsounds.selected and hitsoundMap[VIS.hitsounds.selected] then
@@ -821,6 +888,47 @@ hsBox:AddToggle("hs_remove", { Text="Disable Default", Default=false, Callback=f
 hsBox:AddDropdown("hs_sel", { Text="Sound", Values={"windows xp","minecraft bow","neverlose","steve","among us","bonk","rust","fatality","hitmarker","csgo"}, Default="windows xp", Callback=function(v) VIS.hitsounds.selected=v end })
 hsBox:AddSlider("hs_vol", { Text="Volume", Min=0, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hitsounds.volume=v end })
 hsBox:AddSlider("hs_pitch", { Text="Pitch", Min=0.5, Max=1.5, Default=1, Rounding=1, Callback=function(v) VIS.hitsounds.pitch=v end })
+
+-- ============ HIT NOTIFY ============
+local hnBox = tabs.visual:AddLeftGroupbox("Hit Notify")
+
+pcall(function()
+    if not fighter_controller then return end
+    local lf = fighter_controller.LocalFighter
+    if not lf or not lf.ReplicateFromServer then return end
+    local old = lf.ReplicateFromServer
+    lf.ReplicateFromServer = function(controller, _type, ...)
+        if _type == "DamageNumberEffect" and VIS.hit_notify.enable then
+            local args = {...}
+            local hit_root, hit_damage = args[1], args[2]
+            if hit_root and hit_damage then
+                local msg = VIS.hit_notify.msg or "Hit {target} for {damage}"
+                local target = "?"
+                pcall(function()
+                    local char = hit_root.Parent
+                    local plr = Players:GetPlayerFromCharacter(char)
+                    target = plr and plr.Name or (char and char.Name) or "?"
+                end)
+                msg = msg:gsub("{target}", target)
+                msg = msg:gsub("{damage}", tostring(math.floor(hit_damage + 0.5)))
+                msg = msg:gsub("{hitpart}", hit_root.Name or "?")
+                pcall(function() Library:Notify(msg, VIS.hit_notify.duration) end)
+            end
+        end
+        return old(controller, _type, ...)
+    end
+end)
+
+hnBox:AddToggle("hn_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.hit_notify.enable=v end })
+hnBox:AddSlider("hn_dur", { Text="Duration", Min=1, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hit_notify.duration=v end })
+hnBox:AddInput("hn_msg", {
+    Text = "Message",
+    Default = "Hit {target} for {damage}",
+    Finished = true,
+    Numeric = false,
+    Callback = function(v) VIS.hit_notify.msg = v end,
+})
+hnBox:AddLabel("Formats: {target}, {damage}, {hitpart}")
 
 -- ============ VIEWMODEL CHAMS ============
 local vmcBox = tabs.visual:AddLeftGroupbox("Viewmodel Chams")
@@ -935,7 +1043,7 @@ vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Call
 vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
 vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
 
--- ============ VIEWMODEL CUSTOM ============
+-- ============ VIEWMODEL CUSTOM (FIXED) ============
 local vmcustBox = tabs.visual:AddRightGroupbox("Viewmodel Custom")
 local custTracked = {}
 
