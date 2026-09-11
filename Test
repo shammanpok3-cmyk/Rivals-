@@ -124,7 +124,7 @@ core:AddLabel("Secret online — Owner background")
 core:AddToggle("ex", { Text = "Example feature", Default = false })
 
 -- ==========================================================
--- VISUAL TAB — Eliusm visuals (UElib-compatible)
+-- VISUAL TAB
 -- ==========================================================
 local RunService   = game:GetService("RunService")
 local Players      = game:GetService("Players")
@@ -175,8 +175,8 @@ local VIS = {
         weapon_highlight = { enable=false, color=Color3.new(1,1,1), transparency=0.5, outline_color=Color3.new(1,1,1), outline_transparency=0 },
         arm_highlight = { enable=false, color=Color3.new(1,1,1), transparency=0.5, outline_color=Color3.new(1,1,1), outline_transparency=0 },
         offsets = { enable=false, x=0, y=0, z=0 },
-        custom_body = { color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", disable_clothes=false, transparency=0 },
-        custom_item = { color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", transparency=0 },
+        custom_body = { enable=false, color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", disable_clothes=false, transparency=0 },
+        custom_item = { enable=false, color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", transparency=0 },
     },
     target_hud = { enable=false, scale=1, offset_x=0, offset_y=0 },
 }
@@ -485,45 +485,50 @@ mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Roun
 -- ============ DISABLE ANIMATIONS ============
 local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
 
-local function hookAnims()
-    if not client_viewmodel or not client_viewmodel.Update then return end
+if client_viewmodel and client_viewmodel.Update then
     local old = client_viewmodel.Update
     client_viewmodel.Update = function(c, dt, movement_state, render_data)
         local cfg = VIS.disable_anims
         if cfg.enable and c and c.ClientItem and c.ClientItem.ClientFighter and c.ClientItem.ClientFighter.IsLocalPlayer then
             local s = cfg.select
-            for _, k in ipairs(s) do
-                if k == "bobbing" and c._bobbing_value_spring then
-                    c._bobbing_value_spring.Value = Vector2.new(0,0); c._bobbing_value_spring.Target = Vector2.new(0,0)
-                    c._bobbing_speed_spring.Value = 0; c._bobbing_speed_spring.Target = 0; c._bobbing_tick = 0
-                elseif k == "landing" and c._landing_spring then
-                    c._landing_spring.Value = 0; c._landing_spring.Target = 0
-                    c._jump_spring.Value = 0; c._jump_spring.Target = 0
-                elseif k == "sway" and c._sway_spring then
-                    c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
-                    c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
-                elseif k == "equip" and c._equip_spring then
-                    c._equip_spring.Position = c._equip_spring.Target; c._equip_spring.Velocity = 0
-                elseif k == "inspect" and c._inspect_spring then
-                    c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
-                elseif k == "sliding" and movement_state then
-                    movement_state.IsSliding = false
-                elseif k == "shoot" and c._recoil_spring then
-                    c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
-                    c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
-                elseif k == "impulse" and c._impulse_position_spring then
-                    c._impulse_position_spring.Value = Vector3.new(0,0,0); c._impulse_position_spring.Target = Vector3.new(0,0,0)
-                elseif k == "aim" and c._aim_spring then
-                    c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
-                elseif k == "sprint" and movement_state then
-                    movement_state.IsActuallySprinting = false
-                end
+            if s.bobbing and c._bobbing_value_spring then
+                c._bobbing_value_spring.Value = Vector2.new(0,0); c._bobbing_value_spring.Target = Vector2.new(0,0)
+                c._bobbing_speed_spring.Value = 0; c._bobbing_speed_spring.Target = 0; c._bobbing_tick = 0
+            end
+            if s.landing and c._landing_spring then
+                c._landing_spring.Value = 0; c._landing_spring.Target = 0
+                c._jump_spring.Value = 0; c._jump_spring.Target = 0
+            end
+            if s.sway and c._sway_spring then
+                c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
+                c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
+            end
+            if s.equip and c._equip_spring then
+                c._equip_spring.Position = c._equip_spring.Target; c._equip_spring.Velocity = 0
+            end
+            if s.inspect and c._inspect_spring then
+                c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
+            end
+            if s.sliding and movement_state then
+                movement_state.IsSliding = false
+            end
+            if s.shoot and c._recoil_spring then
+                c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
+                c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
+            end
+            if s.impulse and c._impulse_position_spring then
+                c._impulse_position_spring.Value = Vector3.new(0,0,0); c._impulse_position_spring.Target = Vector3.new(0,0,0)
+            end
+            if s.aim and c._aim_spring then
+                c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
+            end
+            if s.sprint and movement_state then
+                movement_state.IsActuallySprinting = false
             end
         end
         return old(c, dt, movement_state, render_data)
     end
 end
-hookAnims()
 
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
 daBox:AddToggle("da_bobbing", { Text="Bobbing", Default=false, Callback=function(v) VIS.disable_anims.select.bobbing=v end })
@@ -536,57 +541,6 @@ daBox:AddToggle("da_shoot", { Text="Shoot", Default=false, Callback=function(v) 
 daBox:AddToggle("da_impulse", { Text="Impulse", Default=false, Callback=function(v) VIS.disable_anims.select.impulse=v end })
 daBox:AddToggle("da_aim", { Text="Aim", Default=false, Callback=function(v) VIS.disable_anims.select.aim=v end })
 daBox:AddToggle("da_sprint", { Text="Sprint", Default=false, Callback=function(v) VIS.disable_anims.select.sprint=v end })
-
--- fix select table for hook
-VIS.disable_anims.select = setmetatable({}, {
-    __index = function(t, k) return rawget(t, k) end,
-})
-setmetatable(VIS.disable_anims.select, {
-    __index = function(t,k) return rawget(t,k) end,
-})
-
--- convert to list form for hook
-local _origHook = client_viewmodel and client_viewmodel.Update
--- hook already uses ipairs(cfg.select) — change to pairs
-if client_viewmodel and client_viewmodel.Update then
-    local hooked = client_viewmodel.Update
-    client_viewmodel.Update = function(c, dt, movement_state, render_data)
-        local cfg = VIS.disable_anims
-        if cfg.enable and c and c.ClientItem and c.ClientItem.ClientFighter and c.ClientItem.ClientFighter.IsLocalPlayer then
-            local s = cfg.select
-            for k, on in pairs(s) do
-                if on then
-                    if k == "bobbing" and c._bobbing_value_spring then
-                        c._bobbing_value_spring.Value = Vector2.new(0,0); c._bobbing_value_spring.Target = Vector2.new(0,0)
-                        c._bobbing_speed_spring.Value = 0; c._bobbing_speed_spring.Target = 0; c._bobbing_tick = 0
-                    elseif k == "landing" and c._landing_spring then
-                        c._landing_spring.Value = 0; c._landing_spring.Target = 0
-                        c._jump_spring.Value = 0; c._jump_spring.Target = 0
-                    elseif k == "sway" and c._sway_spring then
-                        c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
-                        c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
-                    elseif k == "equip" and c._equip_spring then
-                        c._equip_spring.Position = c._equip_spring.Target; c._equip_spring.Velocity = 0
-                    elseif k == "inspect" and c._inspect_spring then
-                        c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
-                    elseif k == "sliding" and movement_state then
-                        movement_state.IsSliding = false
-                    elseif k == "shoot" and c._recoil_spring then
-                        c._recoil_spring.Value = Vector3.new(0,0,0); c._recoil_spring.Target = Vector3.new(0,0,0)
-                        c._unrecoil_spring.Value = Vector3.new(0,0,0); c._unrecoil_spring.Target = Vector3.new(0,0,0)
-                    elseif k == "impulse" and c._impulse_position_spring then
-                        c._impulse_position_spring.Value = Vector3.new(0,0,0); c._impulse_position_spring.Target = Vector3.new(0,0,0)
-                    elseif k == "aim" and c._aim_spring then
-                        c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
-                    elseif k == "sprint" and movement_state then
-                        movement_state.IsActuallySprinting = false
-                    end
-                end
-            end
-        end
-        return hooked(c, dt, movement_state, render_data)
-    end
-end
 
 -- ============ BULLET TRACERS ============
 local btBox = tabs.visual:AddRightGroupbox("Bullet Tracers")
@@ -1081,31 +1035,50 @@ vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Call
 vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
 vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
 
--- ============ VIEWMODEL CUSTOM ============
+-- ============ VIEWMODEL CUSTOM (FIXED) ============
 local vmcustBox = tabs.visual:AddRightGroupbox("Viewmodel Custom")
 local custTracked = {}
+
+vmcustBox:AddToggle("vmcust_enable", {
+    Text = "Enable Body/Item Customization",
+    Default = false,
+    Callback = function(v) VIS.viewmodel.custom_body.enable = v end,
+})
 
 RunService.Heartbeat:Connect(function()
     local b = VIS.viewmodel.custom_body
     local it = VIS.viewmodel.custom_item
     local ch = LocalPlayer.Character
-    if not ch then
+
+    if not b.enable or not ch then
         for p, d in pairs(custTracked) do
-            if p.Parent then p.Material=d.m; p.Color=d.c; p.Transparency=d.t end
+            if p.Parent then
+                p.Material = d.m; p.Color = d.c; p.Transparency = d.t
+            end
         end
         custTracked = {}
         return
     end
+
     for _, p in ipairs(ch:GetDescendants()) do
-        if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
-            if not custTracked[p] then
-                custTracked[p] = { m=p.Material, c=p.Color, t=p.Transparency }
+        if p:IsA("BasePart")
+           and p.Name ~= "HumanoidRootPart"
+           and not p.Name:find("Hitbox") then
+            local saved = custTracked[p]
+            if not saved then
+                saved = { m = p.Material, c = p.Color, t = p.Transparency }
+                custTracked[p] = saved
             end
-            if b.material_enable then p.Material = Enum.Material[b.material] or p.Material end
-            if b.color_enable then p.Color = b.color end
-            p.Transparency = math.clamp(b.transparency / 100, 0, 1)
+            if saved.t < 1 then
+                if b.material_enable then p.Material = Enum.Material[b.material] or p.Material end
+                if b.color_enable then p.Color = b.color end
+                if b.transparency > 0 then
+                    p.Transparency = math.clamp(b.transparency / 100, 0, 1)
+                end
+            end
         end
     end
+
     if b.disable_clothes then
         for _, p in ipairs(ch:GetDescendants()) do
             if p:IsA("Shirt") then p.ShirtTemplate = "" end
@@ -1113,16 +1086,19 @@ RunService.Heartbeat:Connect(function()
             if p:IsA("ShirtGraphic") then p.Graphic = "" end
         end
     end
+
     local fp = workspace:FindFirstChild("ViewModels")
     local first = fp and fp:FindFirstChild("FirstPerson")
     if first then
         for _, p in ipairs(first:GetDescendants()) do
             if p:IsA("BasePart") then
                 local n = string.lower(p.Name)
-                if not (n:find("arm",1,true) or n:find("hand",1,true)) then
+                if not (n:find("arm", 1, true) or n:find("hand", 1, true)) then
                     if it.material_enable then p.Material = Enum.Material[it.material] or p.Material end
                     if it.color_enable then p.Color = it.color end
-                    p.Transparency = math.clamp(it.transparency / 100, 0, 1)
+                    if it.transparency > 0 then
+                        p.Transparency = math.clamp(it.transparency / 100, 0, 1)
+                    end
                 end
             end
         end
