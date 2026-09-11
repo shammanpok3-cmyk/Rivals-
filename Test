@@ -889,9 +889,7 @@ local function applyVmoOffsets()
             vm.RootPartOffset = CFrame.new(o.X + VIS.viewmodel.offsets.x, o.Y + VIS.viewmodel.offsets.y, o.Z + VIS.viewmodel.offsets.z)
         end
     end
-end
-
-RunService.Heartbeat:Connect(function()
+endRunService.Heartbeat:Connect(function()
     if VIS.viewmodel.offsets.enable then applyVmoOffsets() end
 end)
 
