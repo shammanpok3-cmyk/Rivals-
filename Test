@@ -450,33 +450,42 @@ mbBox:AddToggle("mb_enable", { Text="Enabled", Default=false, Callback=function(
 mbBox:AddSlider("mb_intensity", { Text="Intensity", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.motion_blur.intensity=v end })
 mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Rounding=2, Callback=function(v) VIS.motion_blur.sensitivity=v end })
 
--- ============ DISABLE ANIMATIONS ============
+-- ============ DISABLE ANIMATIONS (guarded) ============
 local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
 
 if client_viewmodel and client_viewmodel.Update then
     local old = client_viewmodel.Update
     client_viewmodel.Update = function(c, dt, movement_state, render_data)
-        local cfg = VIS.disable_anims
-        if cfg.enable and c and c.ClientItem and c.ClientItem.ClientFighter and c.ClientItem.ClientFighter.IsLocalPlayer then
-            local s = cfg.select
-            if s.bobbing and c._bobbing_value_spring then
-                c._bobbing_value_spring.Value = Vector2.new(0,0); c._bobbing_value_spring.Target = Vector2.new(0,0)
-                c._bobbing_speed_spring.Value = 0; c._bobbing_speed_spring.Target = 0; c._bobbing_tick = 0
+        pcall(function()
+            local cfg = VIS.disable_anims
+            if not (cfg and cfg.enable) then return end
+            if not (c and c.ClientItem and c.ClientItem.ClientFighter) then return end
+            if not c.ClientItem.ClientFighter.IsLocalPlayer then return end
+            local s = cfg.select or {}
+            if s.bobbing and c._bobbing_value_spring and c._bobbing_speed_spring then
+                c._bobbing_value_spring.Value = Vector2.new(0,0)
+                c._bobbing_value_spring.Target = Vector2.new(0,0)
+                c._bobbing_speed_spring.Value = 0
+                c._bobbing_speed_spring.Target = 0
+                c._bobbing_tick = 0
             end
-            if s.landing and c._landing_spring then
-                c._landing_spring.Value = 0; c._landing_spring.Target = 0
-                c._jump_spring.Value = 0; c._jump_spring.Target = 0
+            if s.landing and c._landing_spring and c._jump_spring then
+                c._landing_spring.Value = 0
+                c._landing_spring.Target = 0
+                c._jump_spring.Value = 0
+                c._jump_spring.Target = 0
             end
             if s.sliding and movement_state then
                 movement_state.IsSliding = false
             end
             if s.aim and c._aim_spring then
-                c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0
+                c._aim_spring.Position = c._aim_spring.Target
+                c._aim_spring.Velocity = 0
             end
             if s.sprint and movement_state then
                 movement_state.IsActuallySprinting = false
             end
-        end
+        end)
         return old(c, dt, movement_state, render_data)
     end
 end
@@ -709,21 +718,29 @@ vmcBox:AddSlider("vmc_w_t", { Text="Weapon Transparency", Min=0, Max=1, Default=
 vmcBox:AddToggle("vmc_wh_enable", { Text="Weapon Highlight", Default=false, Callback=function(v) VIS.viewmodel.weapon_highlight.enable=v end })
 vmcBox:AddSlider("vmc_wh_t", { Text="WH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.weapon_highlight.transparency=v end })
 
--- ============ VIEWMODEL OFFSETS (with restore on disable) ============
+-- ============ VIEWMODEL OFFSETS (guarded) ============
 local vmoBox = tabs.visual:AddRightGroupbox("Viewmodel Offsets")
 local vmOldOffsets = {}
 
 local function applyVmoOffsets()
     if not item_lib or not item_lib.ViewModels then return end
     for i, vm in pairs(item_lib.ViewModels) do
-        if vm.RootPartOffset then
-            if not vmOldOffsets[i] then vmOldOffsets[i] = vm.RootPartOffset end
-            local o = vmOldOffsets[i]
-            vm.RootPartOffset = CFrame.new(
-                o.X + VIS.viewmodel.offsets.x,
-                o.Y + VIS.viewmodel.offsets.y,
-                o.Z + VIS.viewmodel.offsets.z
-            )
+        local ok = pcall(function()
+            local off = vm and vm.RootPartOffset
+            if typeof(off) == "CFrame" then
+                if not vmOldOffsets[i] then vmOldOffsets[i] = off end
+                local o = vmOldOffsets[i]
+                if typeof(o) == "CFrame" then
+                    vm.RootPartOffset = CFrame.new(
+                        o.X + (VIS.viewmodel.offsets.x or 0),
+                        o.Y + (VIS.viewmodel.offsets.y or 0),
+                        o.Z + (VIS.viewmodel.offsets.z or 0)
+                    )
+                end
+            end
+        end)
+        if not ok then
+            vmOldOffsets[i] = nil
         end
     end
 end
@@ -732,8 +749,10 @@ local function restoreVmoOffsets()
     if not item_lib or not item_lib.ViewModels then return end
     for i, vm in pairs(item_lib.ViewModels) do
         local orig = vmOldOffsets[i]
-        if orig and vm.RootPartOffset then
-            vm.RootPartOffset = orig
+        if orig and vm and vm.RootPartOffset then
+            pcall(function()
+                vm.RootPartOffset = orig
+            end)
         end
     end
     vmOldOffsets = {}
@@ -753,7 +772,7 @@ vmoBox:AddToggle("vmo_enable", {
         if v then
             if item_lib and item_lib.ViewModels then
                 for i, vm in pairs(item_lib.ViewModels) do
-                    if vm.RootPartOffset and not vmOldOffsets[i] then
+                    if vm and typeof(vm.RootPartOffset) == "CFrame" and not vmOldOffsets[i] then
                         vmOldOffsets[i] = vm.RootPartOffset
                     end
                 end
@@ -855,21 +874,25 @@ SkyboxSection:AddToggle("skybox_rotate", { Text="Auto Rotate", Default=false, Ca
 end })
 SkyboxSection:AddSlider("skybox_rot_speed", { Text="Rotate Speed", Min=1, Max=100, Default=10, Rounding=0, Callback=function(value) skyboxData.rotate_speed=value end })
 
+-- ============ BACKGROUND (throttled retry) ============
 task.spawn(function()
-    for i = 1, 20 do
+    for i = 1, 6 do
         task.wait(0.5)
-        if loadBackground() then
-            Library:Notify("bg loaded", 3)
-            break
-        end
+        local ok = pcall(function()
+            if loadBackground() then
+                Library:Notify("bg loaded", 3)
+                return true
+            end
+        end)
+        if ok then break end
     end
 end)
 
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(2) do
         local w = getWin()
         if w and not w:FindFirstChild("sbg") then
-            applyBackground()
+            pcall(applyBackground)
         end
     end
 end)
