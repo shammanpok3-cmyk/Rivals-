@@ -1,6 +1,5 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shammanpok3-cmyk/Rivals-/refs/heads/main/UElib"))()
 
--- ===== RIVALS MODULE REQUIRES =====
 local replicated_storage = game:GetService("ReplicatedStorage")
 local modules = replicated_storage:WaitForChild("Modules", 10)
 local item_lib, enum_lib, fighter_controller, client_viewmodel
@@ -10,7 +9,6 @@ pcall(function() fighter_controller = require(game:GetService("Players").LocalPl
 pcall(function()
     client_viewmodel = require(game:GetService("Players").LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
 end)
--- ===================================
 
 local t = Library.Theme
 if t then
@@ -36,7 +34,6 @@ end
 local imgUrl = "https://res.cloudinary.com/w8q7jrey/image/upload/v1789048821/Wallpaper%20backgrounds/Owner%20background.jpg"
 local folder = "Secret/Backgrounds"
 local cached = folder .. "/Owner_background.jpg"
-
 if not isfolder("Secret") then makefolder("Secret") end
 if not isfolder(folder) then makefolder(folder) end
 
@@ -54,28 +51,17 @@ local function applyBackground()
     for _, v in ipairs(win:GetChildren()) do
         if v.Name == "sbg" or v.Name == "sov" then v:Destroy() end
     end
-    local asset
-    if getcustomasset and isfile(cached) then
-        local ok, id = pcall(getcustomasset, cached)
-        if ok and id then asset = id end
-    end
-    if not asset then return false end
+    if not (getcustomasset and isfile(cached)) then return false end
+    local ok, asset = pcall(getcustomasset, cached)
+    if not ok or not asset then return false end
     local img = Instance.new("ImageLabel")
-    img.Name = "sbg"
-    img.BackgroundTransparency = 1
-    img.Image = asset
-    img.Size = UDim2.fromScale(1, 1)
-    img.ZIndex = 0
-    img.ScaleType = Enum.ScaleType.Crop
-    img.Parent = win
+    img.Name = "sbg"; img.BackgroundTransparency = 1; img.Image = asset
+    img.Size = UDim2.fromScale(1,1); img.ZIndex = 0
+    img.ScaleType = Enum.ScaleType.Crop; img.Parent = win
     local ov = Instance.new("Frame")
-    ov.Name = "sov"
-    ov.BackgroundColor3 = Color3.new(0,0,0)
-    ov.BackgroundTransparency = 0.55
-    ov.BorderSizePixel = 0
-    ov.Size = UDim2.fromScale(1, 1)
-    ov.ZIndex = 1
-    ov.Parent = win
+    ov.Name = "sov"; ov.BackgroundColor3 = Color3.new(0,0,0)
+    ov.BackgroundTransparency = 0.55; ov.BorderSizePixel = 0
+    ov.Size = UDim2.fromScale(1,1); ov.ZIndex = 1; ov.Parent = win
     return true
 end
 
@@ -96,9 +82,6 @@ local core = tabs.main:AddLeftGroupbox("Core")
 core:AddLabel("Secret online — Owner background")
 core:AddToggle("ex", { Text = "Example feature", Default = false })
 
--- ==========================================================
--- VISUAL TAB
--- ==========================================================
 local RunService   = game:GetService("RunService")
 local Players      = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
@@ -106,7 +89,6 @@ local Lighting     = game:GetService("Lighting")
 local Debris       = game:GetService("Debris")
 local LocalPlayer  = Players.LocalPlayer
 local Camera       = workspace.CurrentCamera
-local Mouse        = LocalPlayer:GetMouse()
 
 local function C3(r,g,b) return Color3.fromRGB(math.clamp(r or 0,0,255), math.clamp(g or 0,0,255), math.clamp(b or 0,0,255)) end
 
@@ -132,8 +114,7 @@ local VIS = {
     motion_blur = { enable=false, intensity=0.5, sensitivity=1 },
     disable_anims = { enable=false, select={} },
     tracers = { enable=false, color_start=Color3.new(1,1,1), color_end=Color3.new(1,1,1),
-        life_time=1.5, glow=4, width0=0.35, width1=0.15, speed=3,
-        through_walls=false },
+        life_time=1.5, glow=4, width0=0.35, width1=0.15, speed=3, through_walls=false },
     death_effects = { enable=false, type="Explosion", color=Color3.fromRGB(120,81,166) },
     hitsounds = { enable=false, remove_default=false, volume=3, pitch=1, selected="windows xp" },
     viewmodel = {
@@ -141,6 +122,7 @@ local VIS = {
         weapon_highlight = { enable=false, color=Color3.new(1,1,1), transparency=0.5, outline_color=Color3.new(1,1,1), outline_transparency=0 },
         offsets = { enable=false, x=0, y=0, z=0 },
     },
+    skybox = { enabled=false, selected="None", sky_obj=nil, original_sky=nil, auto_rotate=false, rotate_speed=10, star_count=3000, sun_size=20, moon_size=11 },
 }
 
 -- ============ CHAMS ============
@@ -205,19 +187,6 @@ local function applyChams(plr)
     end
 end
 
-local lastChams = 0
-RunService.Heartbeat:Connect(function()
-    if not VIS.chams.enable then
-        for p in pairs(chamsHL) do dropChams(p) end
-        for p in pairs(chamsBody) do dropChams(p) end
-        return
-    end
-    local now = tick()
-    if now - lastChams < 0.2 then return end
-    lastChams = now
-    for _, plr in ipairs(Players:GetPlayers()) do if plr ~= LocalPlayer then applyChams(plr) end end
-end)
-
 chamsBox:AddToggle("chams_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.chams.enable=v end })
 chamsBox:AddToggle("chams_team", { Text="Team Check", Default=false, Callback=function(v) VIS.chams.team_check=v end })
 chamsBox:AddDropdown("chams_mode", { Text="Type", Values={"highlight","chams"}, Default="highlight", Callback=function(v) VIS.chams.mode=v end })
@@ -234,153 +203,23 @@ chamsBox:AddSlider("chams_ob", { Text="Outline B", Min=0, Max=255, Default=255, 
 
 -- ============ CROSSHAIR ============
 local chBox = tabs.visual:AddRightGroupbox("Crosshair")
-
 local chLines, chLinesO = {}, {}
 for i = 1, 4 do
-    local o = Drawing.new("Line"); o.Visible=false; o.Thickness=3; o.Transparency=1; o.Color=Color3.new(); chLinesO[i]=o
-    local l = Drawing.new("Line"); l.Visible=false; l.Thickness=1; l.Transparency=1; chLines[i]=l
+    local o = Drawing.new("Line"); o.Visible=false; chLinesO[i]=o
+    local l = Drawing.new("Line"); l.Visible=false; chLines[i]=l
 end
-local chRingO = Drawing.new("Circle"); chRingO.Filled=false; chRingO.NumSides=48; chRingO.Thickness=3; chRingO.Transparency=1; chRingO.Color=Color3.new(); chRingO.Visible=false
-local chRing  = Drawing.new("Circle"); chRing.Filled=false; chRing.NumSides=48; chRing.Thickness=1; chRing.Transparency=1; chRing.Visible=false
-local chDotO  = Drawing.new("Circle"); chDotO.Filled=true; chDotO.NumSides=24; chDotO.Radius=1; chDotO.Transparency=1; chDotO.Color=Color3.new(); chDotO.Visible=false
-local chDot   = Drawing.new("Circle"); chDot.Filled=true; chDot.NumSides=24; chDot.Radius=1; chDot.Transparency=1; chDot.Visible=false
+local chRingO = Drawing.new("Circle"); chRingO.Visible=false
+local chRing  = Drawing.new("Circle"); chRing.Visible=false
+local chDotO  = Drawing.new("Circle"); chDotO.Visible=false
+local chDot   = Drawing.new("Circle"); chDot.Visible=false
 
 local chGui = Instance.new("ScreenGui")
-chGui.Name="secret_crosshair"; chGui.ResetOnSpawn=false; chGui.IgnoreGuiInset=true; chGui.DisplayOrder=999
+chGui.ResetOnSpawn=false; chGui.IgnoreGuiInset=true; chGui.DisplayOrder=999
 pcall(function() chGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
-
 local chText = Instance.new("TextLabel")
 chText.BackgroundTransparency=1; chText.AnchorPoint=Vector2.new(0.5,0)
-chText.Size=UDim2.fromOffset(0,0); chText.AutomaticSize=Enum.AutomaticSize.XY
-chText.TextXAlignment=Enum.TextXAlignment.Center; chText.Font=Enum.Font.Code
+chText.AutomaticSize=Enum.AutomaticSize.XY; chText.Font=Enum.Font.Code
 chText.Visible=false; chText.Parent=chGui
-
-local chSpin, chClock = 0, 0
-
-local function local_speed()
-    local ch = LocalPlayer.Character
-    local root = ch and ch:FindFirstChild("HumanoidRootPart")
-    if not root then return 0 end
-    local v = root.AssemblyLinearVelocity
-    return Vector2.new(v.X, v.Z).Magnitude
-end
-
-local function ch_anchor()
-    local c = VIS.crosshair
-    if c.follow_target then
-        if c.follow_source == "gunpoint" then
-            local fp = workspace:FindFirstChild("ViewModels")
-            local first = fp and fp:FindFirstChild("FirstPerson")
-            if first then
-                for _, p in ipairs(first:GetDescendants()) do
-                    if p.Name == "_muzzle" and p:IsA("Attachment") then
-                        local sp = Camera:WorldToViewportPoint(p.WorldPosition)
-                        return Vector2.new(sp.X, sp.Y)
-                    end
-                end
-            end
-        else
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LocalPlayer and plr.Character then
-                    local part = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild("HumanoidRootPart")
-                    if part then
-                        local sp, on = Camera:WorldToViewportPoint(part.Position)
-                        if on then return Vector2.new(sp.X, sp.Y) end
-                    end
-                end
-            end
-        end
-    end
-    local vp = Camera.ViewportSize
-    return Vector2.new(vp.X/2, vp.Y/2)
-end
-
-local function hideCrosshair()
-    for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
-    chRing.Visible=false; chRingO.Visible=false; chDot.Visible=false; chDotO.Visible=false; chText.Visible=false
-end
-
-RunService.RenderStepped:Connect(function(dt)
-    local c = VIS.crosshair
-    if not c.enable then hideCrosshair() return end
-    chClock = chClock + dt
-    if c.rotating then chSpin = (chSpin + c.rotating_speed * dt) % 360 end
-    local rad = math.rad(c.rotation + (c.rotating and chSpin or 0))
-    local cv, sv = math.cos(rad), math.sin(rad)
-    local anchor = ch_anchor()
-
-    local length, gap = c.length, c.gap
-    if c.animation then
-        local w = (math.sin(chClock * c.animation_speed) + 1) * 0.5
-        if c.animation_mode == "breathe" then gap = gap + w * length * 0.6
-        else length = length * (0.55 + w * 0.45) end
-    end
-    if c.spread then gap = gap + math.clamp(local_speed() * 0.12 * c.spread_scale, 0, 60) end
-    local color = c.color
-    if c.fade then color = c.color:Lerp(c.fade_color, (math.sin(chClock*1.5)+1)*0.5) end
-    local transp = 1
-    if c.shimmer then transp = 0.45 + (math.sin(chClock*c.shimmer_speed)+1)*0.5*0.55 end
-
-    if c.style == "circle" then
-        for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
-        chDot.Visible=false; chDotO.Visible=false
-        if c.outline then
-            chRingO.Position=anchor; chRingO.Radius=length; chRingO.Color=c.outline_color
-            chRingO.Thickness=c.thickness+2; chRingO.Transparency=transp; chRingO.Visible=true
-        else chRingO.Visible=false end
-        chRing.Position=anchor; chRing.Radius=length; chRing.Color=color
-        chRing.Thickness=c.thickness; chRing.Transparency=transp; chRing.Visible=true
-    elseif c.style == "dot" then
-        for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
-        chRing.Visible=false; chRingO.Visible=false
-    else
-        chRing.Visible=false; chRingO.Visible=false
-        local arms
-        if c.style == "t" then
-            arms = { {Vector2.new(0,gap),Vector2.new(0,gap+length),"bottom_line"}, {Vector2.new(-gap,0),Vector2.new(-gap-length,0),"left_line"}, {Vector2.new(gap,0),Vector2.new(gap+length,0),"right_line"} }
-        elseif c.style == "x" then
-            local d = 0.7071
-            arms = { {Vector2.new(-d,-d)*gap,Vector2.new(-d,-d)*(gap+length),"top_line"}, {Vector2.new(d,d)*gap,Vector2.new(d,d)*(gap+length),"bottom_line"}, {Vector2.new(-d,d)*gap,Vector2.new(-d,d)*(gap+length),"left_line"}, {Vector2.new(d,-d)*gap,Vector2.new(d,-d)*(gap+length),"right_line"} }
-        else
-            arms = { {Vector2.new(0,-gap),Vector2.new(0,-gap-length),"top_line"}, {Vector2.new(0,gap),Vector2.new(0,gap+length),"bottom_line"}, {Vector2.new(-gap,0),Vector2.new(-gap-length,0),"left_line"}, {Vector2.new(gap,0),Vector2.new(gap+length,0),"right_line"} }
-        end
-        for i=1,4 do
-            local a = arms[i]; local l = chLines[i]; local o = chLinesO[i]
-            if c.lines and a and c[a[3]] then
-                local f, tt = a[1], a[2]
-                local fr = Vector2.new(f.X*cv - f.Y*sv, f.X*sv + f.Y*cv)
-                local tr = Vector2.new(tt.X*cv - tt.Y*sv, tt.X*sv + tt.Y*cv)
-                local from, to = anchor + fr, anchor + tr
-                if c.outline then
-                    o.From=from; o.To=to; o.Color=c.outline_color
-                    o.Thickness=c.thickness+2; o.Transparency=transp; o.Visible=true
-                else o.Visible=false end
-                l.From=from; l.To=to; l.Color=color
-                l.Thickness=c.thickness; l.Transparency=transp; l.Visible=true
-            else l.Visible=false; o.Visible=false end
-        end
-    end
-    if c.dot or c.style == "dot" then
-        local r = math.max(c.thickness, 1)
-        if c.outline then
-            chDotO.Position=anchor; chDotO.Color=c.outline_color
-            chDotO.Radius=r+1; chDotO.Transparency=transp; chDotO.Visible=true
-        else chDotO.Visible=false end
-        chDot.Position=anchor; chDot.Color=color; chDot.Radius=r
-        chDot.Transparency=transp; chDot.Visible=true
-    else chDot.Visible=false; chDotO.Visible=false end
-
-    if c.text_enable and c.text_content ~= "" then
-        local tc = c.text_color
-        if c.text_animation then tc = Color3.fromHSV((chClock * 0.15) % 1, 0.65, 1) end
-        chText.Text = c.text_content
-        chText.TextSize = c.text_size
-        chText.TextColor3 = tc
-        chText.TextStrokeTransparency = c.text_outline and 0 or 1
-        chText.Position = UDim2.fromOffset(anchor.X, anchor.Y + gap + length + c.text_offset)
-        chText.Visible = true
-    else chText.Visible = false end
-end)
 
 chBox:AddToggle("ch_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.crosshair.enable=v end })
 chBox:AddDropdown("ch_style", { Text="Style", Values={"cross","t","x","circle","dot"}, Default="cross", Callback=function(v) VIS.crosshair.style=v end })
@@ -393,8 +232,6 @@ chBox:AddSlider("ch_gap", { Text="Gap", Min=0, Max=20, Default=3, Rounding=0, Ca
 chBox:AddSlider("ch_rot", { Text="Rotation", Min=0, Max=360, Default=0, Rounding=0, Callback=function(v) VIS.crosshair.rotation=v end })
 chBox:AddSlider("ch_spd", { Text="Rotate Speed", Min=0, Max=720, Default=120, Rounding=0, Callback=function(v) VIS.crosshair.rotating_speed=v end })
 chBox:AddToggle("ch_rotating", { Text="Rotating", Default=false, Callback=function(v) VIS.crosshair.rotating=v end })
-chBox:AddToggle("ch_spread", { Text="Spread", Default=false, Callback=function(v) VIS.crosshair.spread=v end })
-chBox:AddSlider("ch_spread_scale", { Text="Spread Scale", Min=0, Max=4, Default=1, Rounding=2, Callback=function(v) VIS.crosshair.spread_scale=v end })
 chBox:AddToggle("ch_anim", { Text="Animation", Default=false, Callback=function(v) VIS.crosshair.animation=v end })
 chBox:AddDropdown("ch_anim_mode", { Text="Animation Mode", Values={"pulse","breathe"}, Default="pulse", Callback=function(v) VIS.crosshair.animation_mode=v end })
 chBox:AddSlider("ch_anim_spd", { Text="Animation Speed", Min=0.1, Max=12, Default=3, Rounding=1, Callback=function(v) VIS.crosshair.animation_speed=v end })
@@ -414,13 +251,7 @@ chBox:AddSlider("ch_r", { Text="R", Min=0, Max=255, Default=0, Rounding=0, Callb
 chBox:AddSlider("ch_g", { Text="G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,v,VIS.crosshair.color.B*255) end })
 chBox:AddSlider("ch_b", { Text="B", Min=0, Max=255, Default=170, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,VIS.crosshair.color.G*255,v) end })
 chBox:AddToggle("ch_text", { Text="Text", Default=false, Callback=function(v) VIS.crosshair.text_enable=v end })
-chBox:AddInput("ch_text_val", {
-    Text = "Text Value",
-    Default = "elisium",
-    Finished = true,
-    Numeric = false,
-    Callback = function(v) VIS.crosshair.text_content = v end,
-})
+chBox:AddInput("ch_text_val", { Text="Text Value", Default="elisium", Finished=true, Numeric=false, Callback=function(v) VIS.crosshair.text_content=v end })
 chBox:AddSlider("ch_text_size", { Text="Text Size", Min=8, Max=48, Default=16, Rounding=0, Callback=function(v) VIS.crosshair.text_size=v end })
 chBox:AddSlider("ch_text_off", { Text="Text Offset", Min=0, Max=120, Default=18, Rounding=0, Callback=function(v) VIS.crosshair.text_offset=v end })
 chBox:AddToggle("ch_text_anim", { Text="Text Animation", Default=false, Callback=function(v) VIS.crosshair.text_animation=v end })
@@ -430,29 +261,14 @@ chBox:AddToggle("ch_text_outline", { Text="Text Outline", Default=true, Callback
 local mbBox = tabs.visual:AddLeftGroupbox("Motion Blur")
 local mbEffect = Instance.new("BlurEffect")
 mbEffect.Name="secret_motion_blur"; mbEffect.Size=0; mbEffect.Enabled=false; mbEffect.Parent=Lighting
-
 local mbLook = Camera.CFrame.LookVector
-RunService.RenderStepped:Connect(function(dt)
-    local c = VIS.motion_blur
-    if not c.enable then
-        if mbEffect.Enabled then mbEffect.Enabled=false; mbEffect.Size=0 end
-        mbLook = Camera.CFrame.LookVector; return
-    end
-    mbEffect.Enabled = true
-    local look = Camera.CFrame.LookVector
-    local d = (look - mbLook).Magnitude
-    mbLook = look
-    local target = math.clamp(d / math.max(dt,1/240) * c.sensitivity * c.intensity * 0.35, 0, 56 * c.intensity)
-    mbEffect.Size = mbEffect.Size + (target - mbEffect.Size) * math.min(dt * 20, 1)
-end)
 
 mbBox:AddToggle("mb_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.motion_blur.enable=v end })
 mbBox:AddSlider("mb_intensity", { Text="Intensity", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.motion_blur.intensity=v end })
 mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Rounding=2, Callback=function(v) VIS.motion_blur.sensitivity=v end })
 
--- ============ DISABLE ANIMATIONS (guarded) ============
+-- ============ DISABLE ANIMS ============
 local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
-
 if client_viewmodel and client_viewmodel.Update then
     local old = client_viewmodel.Update
     client_viewmodel.Update = function(c, dt, movement_state, render_data)
@@ -463,33 +279,20 @@ if client_viewmodel and client_viewmodel.Update then
             if not c.ClientItem.ClientFighter.IsLocalPlayer then return end
             local s = cfg.select or {}
             if s.bobbing and c._bobbing_value_spring and c._bobbing_speed_spring then
-                c._bobbing_value_spring.Value = Vector2.new(0,0)
-                c._bobbing_value_spring.Target = Vector2.new(0,0)
-                c._bobbing_speed_spring.Value = 0
-                c._bobbing_speed_spring.Target = 0
-                c._bobbing_tick = 0
+                c._bobbing_value_spring.Value = Vector2.new(0,0); c._bobbing_value_spring.Target = Vector2.new(0,0)
+                c._bobbing_speed_spring.Value = 0; c._bobbing_speed_spring.Target = 0; c._bobbing_tick = 0
             end
             if s.landing and c._landing_spring and c._jump_spring then
-                c._landing_spring.Value = 0
-                c._landing_spring.Target = 0
-                c._jump_spring.Value = 0
-                c._jump_spring.Target = 0
+                c._landing_spring.Value = 0; c._landing_spring.Target = 0
+                c._jump_spring.Value = 0; c._jump_spring.Target = 0
             end
-            if s.sliding and movement_state then
-                movement_state.IsSliding = false
-            end
-            if s.aim and c._aim_spring then
-                c._aim_spring.Position = c._aim_spring.Target
-                c._aim_spring.Velocity = 0
-            end
-            if s.sprint and movement_state then
-                movement_state.IsActuallySprinting = false
-            end
+            if s.sliding and movement_state then movement_state.IsSliding = false end
+            if s.aim and c._aim_spring then c._aim_spring.Position = c._aim_spring.Target; c._aim_spring.Velocity = 0 end
+            if s.sprint and movement_state then movement_state.IsActuallySprinting = false end
         end)
         return old(c, dt, movement_state, render_data)
     end
 end
-
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
 daBox:AddToggle("da_bobbing", { Text="Bobbing", Default=false, Callback=function(v) VIS.disable_anims.select.bobbing=v end })
 daBox:AddToggle("da_landing", { Text="Landing", Default=false, Callback=function(v) VIS.disable_anims.select.landing=v end })
@@ -499,20 +302,16 @@ daBox:AddToggle("da_sprint", { Text="Sprint", Default=false, Callback=function(v
 
 -- ============ BULLET TRACERS ============
 local btBox = tabs.visual:AddRightGroupbox("Bullet Tracers")
-local activeTracers = 0
+local activeBeams = {}
 
 local function createBeam(from, to)
-    if activeTracers >= 48 then return end
-    activeTracers += 1
+    if #activeBeams >= 48 then return end
     local t = VIS.tracers
-    local a = Instance.new("Part")
-    a.Anchored=true; a.CanCollide=false; a.CanQuery=false; a.CanTouch=false
+    local a = Instance.new("Part"); a.Anchored=true; a.CanCollide=false; a.CanQuery=false; a.CanTouch=false
     a.Transparency=1; a.CFrame=CFrame.new(from); a.Parent=workspace
-    local b = Instance.new("Part")
-    b.Anchored=true; b.CanCollide=false; b.CanQuery=false; b.CanTouch=false
+    local b = Instance.new("Part"); b.Anchored=true; b.CanCollide=false; b.CanQuery=false; b.CanTouch=false
     b.Transparency=1; b.CFrame=CFrame.new(from); b.Parent=workspace
-    local aa = Instance.new("Attachment", a)
-    local ba = Instance.new("Attachment", b)
+    local aa = Instance.new("Attachment", a); local ba = Instance.new("Attachment", b)
     local beam = Instance.new("Beam")
     beam.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0,t.color_start), ColorSequenceKeypoint.new(0.5,t.color_end), ColorSequenceKeypoint.new(1,t.color_start) })
     beam.Brightness=t.glow; beam.LightEmission=t.glow; beam.LightInfluence=0
@@ -521,18 +320,7 @@ local function createBeam(from, to)
     beam.Attachment0=aa; beam.Attachment1=ba; beam.Parent=workspace
     local dist = (to - from).Magnitude
     local unit = (to - from).Unit
-    local elapsed = 0
-    local conn
-    conn = RunService.Heartbeat:Connect(function(dt)
-        elapsed += dt
-        local alpha = math.min(elapsed / 0.05, 1)
-        b.CFrame = CFrame.new(from + unit * (dist * alpha))
-        if elapsed >= t.life_time then
-            conn:Disconnect()
-            beam:Destroy(); a:Destroy(); b:Destroy()
-            activeTracers = math.max(activeTracers - 1, 0)
-        end
-    end)
+    activeBeams[#activeBeams+1] = { beam=beam, a=a, b=b, from=from, unit=unit, dist=dist, elapsed=0 }
 end
 
 pcall(function()
@@ -571,7 +359,6 @@ btBox:AddToggle("bt_walls", { Text="Through Walls", Default=false, Callback=func
 
 -- ============ DEATH EFFECTS ============
 local deBox = tabs.visual:AddLeftGroupbox("Death Effects")
-
 local function spawnDeath(pos)
     local c = VIS.death_effects
     if c.type == "Explosion" then
@@ -582,8 +369,7 @@ local function spawnDeath(pos)
     end
     local part = Instance.new("Part")
     part.Anchored=true; part.CanCollide=false; part.CanQuery=false; part.CanTouch=false
-    part.Transparency=1; part.Size=Vector3.new(1,1,1)
-    part.CFrame=CFrame.new(pos); part.Parent=workspace
+    part.Transparency=1; part.Size=Vector3.new(1,1,1); part.CFrame=CFrame.new(pos); part.Parent=workspace
     local att = Instance.new("Attachment", part)
     local em = Instance.new("ParticleEmitter")
     em.Color=ColorSequence.new(c.color)
@@ -595,7 +381,6 @@ local function spawnDeath(pos)
     em.Parent=att; em:Emit(45)
     Debris:AddItem(part, 1.3)
 end
-
 local function hookDeath(plr)
     plr.CharacterAdded:Connect(function(ch)
         local hum = ch:WaitForChild("Humanoid", 6)
@@ -657,9 +442,7 @@ hsBox:AddSlider("hs_pitch", { Text="Pitch", Min=0.5, Max=1.5, Default=1, Roundin
 -- ============ VIEWMODEL CHAMS ============
 local vmcBox = tabs.visual:AddLeftGroupbox("Viewmodel Chams")
 local vmTrack, vmHL = {}, {}
-
 local function vmVisible(p) return p.Transparency < 1 and p.Size.Magnitude < 40 end
-
 local function vmStore(p)
     if not vmTrack[p] then
         vmTrack[p] = { m=p.Material, c=p.Color, r=p.Reflectance, t=p.Transparency, l=p.LocalTransparencyModifier }
@@ -675,38 +458,13 @@ end
 local function vmSetHL(p, cfg)
     local h = vmHL[p]
     if not h or not h.Parent then
-        h = Instance.new("Highlight")
-        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        h.Adornee = p; h.Parent = p
-        vmHL[p] = h
+        h = Instance.new("Highlight"); h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Adornee = p; h.Parent = p; vmHL[p] = h
     end
     h.FillColor=cfg.color; h.FillTransparency=cfg.transparency
     h.OutlineColor=cfg.outline_color; h.OutlineTransparency=cfg.outline_transparency
 end
-local function vmDropHL(p)
-    if vmHL[p] then vmHL[p]:Destroy(); vmHL[p]=nil end
-end
-
-RunService.Heartbeat:Connect(function()
-    local fp = workspace:FindFirstChild("ViewModels")
-    if not fp then return end
-    local first = fp:FindFirstChild("FirstPerson")
-    if not first then return end
-    local vmc = VIS.viewmodel
-    for _, p in ipairs(first:GetDescendants()) do
-        if p:IsA("BasePart") and vmVisible(p) then
-            if vmc.weapon_chams.enable then
-                vmStore(p)
-                p.Material = Enum.Material[vmc.weapon_chams.material] or Enum.Material.Neon
-                p.Color = vmc.weapon_chams.color
-                p.Transparency = vmc.weapon_chams.transparency
-                p.Reflectance = 0
-            else vmRestore(p) end
-            if vmc.weapon_highlight.enable then vmSetHL(p, vmc.weapon_highlight)
-            else vmDropHL(p) end
-        end
-    end
-end)
+local function vmDropHL(p) if vmHL[p] then vmHL[p]:Destroy(); vmHL[p]=nil end end
 
 vmcBox:AddToggle("vmc_w_enable", { Text="Weapon Chams", Default=false, Callback=function(v) VIS.viewmodel.weapon_chams.enable=v end })
 vmcBox:AddDropdown("vmc_w_mat", { Text="Weapon Material", Values={"Neon","ForceField","Glass","Ice","Plastic"}, Default="Neon", Callback=function(v) VIS.viewmodel.weapon_chams.material=v end })
@@ -714,74 +472,32 @@ vmcBox:AddSlider("vmc_w_r", { Text="Weapon R", Min=0, Max=255, Default=255, Roun
 vmcBox:AddSlider("vmc_w_g", { Text="Weapon G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.weapon_chams.color; VIS.viewmodel.weapon_chams.color=C3(c.R*255,v,c.B*255) end })
 vmcBox:AddSlider("vmc_w_b", { Text="Weapon B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.weapon_chams.color; VIS.viewmodel.weapon_chams.color=C3(c.R*255,c.G*255,v) end })
 vmcBox:AddSlider("vmc_w_t", { Text="Weapon Transparency", Min=0, Max=1, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.weapon_chams.transparency=v end })
-
 vmcBox:AddToggle("vmc_wh_enable", { Text="Weapon Highlight", Default=false, Callback=function(v) VIS.viewmodel.weapon_highlight.enable=v end })
 vmcBox:AddSlider("vmc_wh_t", { Text="WH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.weapon_highlight.transparency=v end })
 
--- ============ VIEWMODEL OFFSETS (guarded) ============
+-- ============ VIEWMODEL OFFSETS ============
 local vmoBox = tabs.visual:AddRightGroupbox("Viewmodel Offsets")
 local vmOldOffsets = {}
-
-local function applyVmoOffsets()
-    if not item_lib or not item_lib.ViewModels then return end
-    for i, vm in pairs(item_lib.ViewModels) do
-        local ok = pcall(function()
-            local off = vm and vm.RootPartOffset
-            if typeof(off) == "CFrame" then
-                if not vmOldOffsets[i] then vmOldOffsets[i] = off end
-                local o = vmOldOffsets[i]
-                if typeof(o) == "CFrame" then
-                    vm.RootPartOffset = CFrame.new(
-                        o.X + (VIS.viewmodel.offsets.x or 0),
-                        o.Y + (VIS.viewmodel.offsets.y or 0),
-                        o.Z + (VIS.viewmodel.offsets.z or 0)
-                    )
+vmoBox:AddToggle("vmo_enable", { Text="Enabled", Default=false, Callback=function(v)
+    VIS.viewmodel.offsets.enable = v
+    if v then
+        if item_lib and item_lib.ViewModels then
+            for i, vm in pairs(item_lib.ViewModels) do
+                if vm and typeof(vm.RootPartOffset) == "CFrame" and not vmOldOffsets[i] then
+                    vmOldOffsets[i] = vm.RootPartOffset
                 end
             end
-        end)
-        if not ok then
-            vmOldOffsets[i] = nil
         end
-    end
-end
-
-local function restoreVmoOffsets()
-    if not item_lib or not item_lib.ViewModels then return end
-    for i, vm in pairs(item_lib.ViewModels) do
-        local orig = vmOldOffsets[i]
-        if orig and vm and vm.RootPartOffset then
-            pcall(function()
-                vm.RootPartOffset = orig
-            end)
-        end
-    end
-    vmOldOffsets = {}
-end
-
-RunService.Heartbeat:Connect(function()
-    if VIS.viewmodel.offsets.enable then
-        applyVmoOffsets()
-    end
-end)
-
-vmoBox:AddToggle("vmo_enable", {
-    Text = "Enabled",
-    Default = false,
-    Callback = function(v)
-        VIS.viewmodel.offsets.enable = v
-        if v then
-            if item_lib and item_lib.ViewModels then
-                for i, vm in pairs(item_lib.ViewModels) do
-                    if vm and typeof(vm.RootPartOffset) == "CFrame" and not vmOldOffsets[i] then
-                        vmOldOffsets[i] = vm.RootPartOffset
-                    end
-                end
+    else
+        if item_lib and item_lib.ViewModels then
+            for i, vm in pairs(item_lib.ViewModels) do
+                local orig = vmOldOffsets[i]
+                if orig and vm then pcall(function() vm.RootPartOffset = orig end) end
             end
-        else
-            restoreVmoOffsets()
         end
-    end,
-})
+        vmOldOffsets = {}
+    end
+end })
 vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.x=v end })
 vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
 vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
@@ -808,73 +524,210 @@ local SkyboxNames = {}
 for name in pairs(SkyboxPresets) do SkyboxNames[#SkyboxNames+1] = name end
 table.sort(SkyboxNames)
 
-local skyboxData = { enabled=false, selected="None", sky_obj=nil, original_sky=nil, auto_rotate=false, rotate_speed=10, star_count=3000, sun_size=20, moon_size=11 }
-local skyboxConn = nil
-
+local SD = VIS.skybox
 local function EnsureSky()
-    if skyboxData.sky_obj and skyboxData.sky_obj.Parent then return skyboxData.sky_obj end
+    if SD.sky_obj and SD.sky_obj.Parent then return SD.sky_obj end
     local original = Lighting:FindFirstChildOfClass("Sky")
     if original and original.Name ~= "SecretSky" then
-        skyboxData.original_sky = original
-        original.Parent = nil
-    else skyboxData.original_sky = nil end
-    skyboxData.sky_obj = Instance.new("Sky")
-    skyboxData.sky_obj.Name = "SecretSky"
-    skyboxData.sky_obj.Parent = Lighting
-    return skyboxData.sky_obj
+        SD.original_sky = original; original.Parent = nil
+    else SD.original_sky = nil end
+    SD.sky_obj = Instance.new("Sky"); SD.sky_obj.Name = "SecretSky"; SD.sky_obj.Parent = Lighting
+    return SD.sky_obj
 end
-
-local function RestoreOriginalSky()
-    if skyboxData.sky_obj and skyboxData.sky_obj.Parent then skyboxData.sky_obj:Destroy() end
-    skyboxData.sky_obj = nil
-    if skyboxData.original_sky and skyboxData.original_sky.Parent == nil then skyboxData.original_sky.Parent = Lighting end
-    skyboxData.original_sky = nil
+local function RestoreSky()
+    if SD.sky_obj and SD.sky_obj.Parent then SD.sky_obj:Destroy() end
+    SD.sky_obj = nil
+    if SD.original_sky and SD.original_sky.Parent == nil then SD.original_sky.Parent = Lighting end
+    SD.original_sky = nil
 end
-
-local function ApplySkybox()
-    if not skyboxData.enabled then return end
-    local sky = EnsureSky()
-    if not sky then return end
-    local tex = SkyboxPresets[skyboxData.selected] or SkyboxPresets["None"]
+local function ApplySky()
+    if not SD.enabled then return end
+    local sky = EnsureSky(); if not sky then return end
+    local tex = SkyboxPresets[SD.selected] or SkyboxPresets["None"]
     sky.SkyboxBk = tex.SkyboxBk; sky.SkyboxDn = tex.SkyboxDn
     sky.SkyboxFt = tex.SkyboxFt; sky.SkyboxLf = tex.SkyboxLf
     sky.SkyboxRt = tex.SkyboxRt; sky.SkyboxUp = tex.SkyboxUp
-    sky.SunAngularSize = skyboxData.sun_size
-    sky.MoonAngularSize = skyboxData.moon_size
-    sky.StarCount = skyboxData.star_count
+    sky.SunAngularSize = SD.sun_size; sky.MoonAngularSize = SD.moon_size; sky.StarCount = SD.star_count
 end
 
 local SkyboxSection = tabs.visual:AddRightGroupbox("Skybox")
-SkyboxSection:AddToggle("skybox_enabled", { Text="Enabled", Default=false, Callback=function(state)
-    skyboxData.enabled = state
-    if state then ApplySkybox()
-    else
-        if skyboxConn then skyboxConn:Disconnect(); skyboxConn = nil end
-        RestoreOriginalSky()
-    end
+SkyboxSection:AddToggle("skybox_enabled", { Text="Enabled", Default=false, Callback=function(v)
+    SD.enabled = v
+    if v then ApplySky() else RestoreSky() end
 end })
-SkyboxSection:AddDropdown("skybox_selected", { Text="Skybox", Values=SkyboxNames, Default="None", Callback=function(value) skyboxData.selected=value; ApplySkybox() end })
-SkyboxSection:AddSlider("skybox_stars", { Text="Stars", Min=0, Max=5000, Default=3000, Rounding=0, Callback=function(value) skyboxData.star_count=value; ApplySkybox() end })
-SkyboxSection:AddSlider("skybox_sun", { Text="Sun Size", Min=0, Max=50, Default=20, Rounding=0, Callback=function(value) skyboxData.sun_size=value; ApplySkybox() end })
-SkyboxSection:AddSlider("skybox_moon", { Text="Moon Size", Min=0, Max=30, Default=11, Rounding=0, Callback=function(value) skyboxData.moon_size=value; ApplySkybox() end })
-SkyboxSection:AddToggle("skybox_rotate", { Text="Auto Rotate", Default=false, Callback=function(state)
-    skyboxData.auto_rotate = state
-    if state then
-        if skyboxConn then skyboxConn:Disconnect() end
-        skyboxConn = RunService.RenderStepped:Connect(function(dt)
-            if not skyboxData.enabled or not skyboxData.auto_rotate then return end
-            local sky = skyboxData.sky_obj
-            if sky and sky.Parent then
-                sky.SkyboxOrientation = Vector3.new(0, (sky.SkyboxOrientation.Y + skyboxData.rotate_speed * dt) % 360, 0)
-            end
-        end)
-    else
-        if skyboxConn then skyboxConn:Disconnect(); skyboxConn = nil end
-    end
-end })
-SkyboxSection:AddSlider("skybox_rot_speed", { Text="Rotate Speed", Min=1, Max=100, Default=10, Rounding=0, Callback=function(value) skyboxData.rotate_speed=value end })
+SkyboxSection:AddDropdown("skybox_selected", { Text="Skybox", Values=SkyboxNames, Default="None", Callback=function(v) SD.selected=v; ApplySky() end })
+SkyboxSection:AddSlider("skybox_stars", { Text="Stars", Min=0, Max=5000, Default=3000, Rounding=0, Callback=function(v) SD.star_count=v; ApplySky() end })
+SkyboxSection:AddSlider("skybox_sun", { Text="Sun Size", Min=0, Max=50, Default=20, Rounding=0, Callback=function(v) SD.sun_size=v; ApplySky() end })
+SkyboxSection:AddSlider("skybox_moon", { Text="Moon Size", Min=0, Max=30, Default=11, Rounding=0, Callback=function(v) SD.moon_size=v; ApplySky() end })
+SkyboxSection:AddToggle("skybox_rotate", { Text="Auto Rotate", Default=false, Callback=function(v) SD.auto_rotate=v end })
+SkyboxSection:AddSlider("skybox_rot_speed", { Text="Rotate Speed", Min=1, Max=100, Default=10, Rounding=0, Callback=function(v) SD.rotate_speed=v end })
 
--- ============ BACKGROUND (throttled retry) ============
+-- ==========================================================
+-- UNIFIED HEARTBEAT (all per-frame work in one connection)
+-- ==========================================================
+local chSpin, chClock = 0, 0
+local lastChams = 0
+
+RunService.Heartbeat:Connect(function(dt)
+    -- 1. Chams (every 0.2s)
+    if VIS.chams.enable then
+        local now = tick()
+        if now - lastChams >= 0.2 then
+            lastChams = now
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer then
+                    pcall(applyChams, plr)
+                end
+            end
+        end
+    end
+
+    -- 2. Motion blur
+    local mb = VIS.motion_blur
+    if mb.enable then
+        mbEffect.Enabled = true
+        local look = Camera.CFrame.LookVector
+        local d = (look - mbLook).Magnitude
+        mbLook = look
+        local target = math.clamp(d / math.max(dt,1/240) * mb.sensitivity * mb.intensity * 0.35, 0, 56 * mb.intensity)
+        mbEffect.Size = mbEffect.Size + (target - mbEffect.Size) * math.min(dt * 20, 1)
+    else
+        if mbEffect.Enabled then mbEffect.Enabled = false; mbEffect.Size = 0 end
+        mbLook = Camera.CFrame.LookVector
+    end
+
+    -- 3. Bullet tracers
+    for i = #activeBeams, 1, -1 do
+        local bm = activeBeams[i]
+        bm.elapsed = bm.elapsed + dt
+        local alpha = math.min(bm.elapsed / 0.05, 1)
+        bm.b.CFrame = CFrame.new(bm.from + bm.unit * (bm.dist * alpha))
+        if bm.elapsed >= VIS.tracers.life_time then
+            bm.beam:Destroy(); bm.a:Destroy(); bm.b:Destroy()
+            table.remove(activeBeams, i)
+        end
+    end
+
+    -- 4. Viewmodel chams
+    do
+        local fp = workspace:FindFirstChild("ViewModels")
+        local first = fp and fp:FindFirstChild("FirstPerson")
+        if first then
+            local vmc = VIS.viewmodel
+            for _, p in ipairs(first:GetDescendants()) do
+                if p:IsA("BasePart") and vmVisible(p) then
+                    if vmc.weapon_chams.enable then
+                        vmStore(p)
+                        p.Material = Enum.Material[vmc.weapon_chams.material] or Enum.Material.Neon
+                        p.Color = vmc.weapon_chams.color
+                        p.Transparency = vmc.weapon_chams.transparency
+                        p.Reflectance = 0
+                    else vmRestore(p) end
+                    if vmc.weapon_highlight.enable then vmSetHL(p, vmc.weapon_highlight)
+                    else vmDropHL(p) end
+                end
+            end
+        end
+    end
+
+    -- 5. Viewmodel offsets
+    if VIS.viewmodel.offsets.enable and item_lib and item_lib.ViewModels then
+        for i, vm in pairs(item_lib.ViewModels) do
+            local ok = pcall(function()
+                local off = vm and vm.RootPartOffset
+                if typeof(off) == "CFrame" then
+                    if not vmOldOffsets[i] then vmOldOffsets[i] = off end
+                    local o = vmOldOffsets[i]
+                    if typeof(o) == "CFrame" then
+                        vm.RootPartOffset = CFrame.new(o.X + (VIS.viewmodel.offsets.x or 0), o.Y + (VIS.viewmodel.offsets.y or 0), o.Z + (VIS.viewmodel.offsets.z or 0))
+                    end
+                end
+            end)
+            if not ok then vmOldOffsets[i] = nil end
+        end
+    end
+
+    -- 6. Skybox auto-rotate
+    if SD.enabled and SD.auto_rotate and SD.sky_obj and SD.sky_obj.Parent then
+        SD.sky_obj.SkyboxOrientation = Vector3.new(0, (SD.sky_obj.SkyboxOrientation.Y + SD.rotate_speed * dt) % 360, 0)
+    end
+end)
+
+-- ==========================================================
+-- UNIFIED RENDERSTEPPED (crosshair drawing only)
+-- ==========================================================
+RunService.RenderStepped:Connect(function(dt)
+    local c = VIS.crosshair
+    if not c.enable then
+        for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
+        chRing.Visible=false; chRingO.Visible=false; chDot.Visible=false; chDotO.Visible=false; chText.Visible=false
+        return
+    end
+    chClock = chClock + dt
+    if c.rotating then chSpin = (chSpin + c.rotating_speed * dt) % 360 end
+    local rad = math.rad(c.rotation + (c.rotating and chSpin or 0))
+    local cv, sv = math.cos(rad), math.sin(rad)
+    local vp = Camera.ViewportSize
+    local anchor = Vector2.new(vp.X/2, vp.Y/2)
+
+    local length, gap = c.length, c.gap
+    if c.animation then
+        local w = (math.sin(chClock * c.animation_speed) + 1) * 0.5
+        if c.animation_mode == "breathe" then gap = gap + w * length * 0.6
+        else length = length * (0.55 + w * 0.45) end
+    end
+    local color = c.color
+    if c.fade then color = c.color:Lerp(c.fade_color, (math.sin(chClock*1.5)+1)*0.5) end
+    local transp = 1
+    if c.shimmer then transp = 0.45 + (math.sin(chClock*c.shimmer_speed)+1)*0.5*0.55 end
+
+    if c.style == "circle" then
+        for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
+        chDot.Visible=false; chDotO.Visible=false
+        chRing.Position=anchor; chRing.Radius=length; chRing.Color=color
+        chRing.Thickness=c.thickness; chRing.Transparency=transp; chRing.Visible=true
+    elseif c.style == "dot" then
+        for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
+        chRing.Visible=false
+    else
+        chRing.Visible=false
+        local arms
+        if c.style == "x" then
+            local d = 0.7071
+            arms = { {Vector2.new(-d,-d)*gap,Vector2.new(-d,-d)*(gap+length),"top_line"}, {Vector2.new(d,d)*gap,Vector2.new(d,d)*(gap+length),"bottom_line"}, {Vector2.new(-d,d)*gap,Vector2.new(-d,d)*(gap+length),"left_line"}, {Vector2.new(d,-d)*gap,Vector2.new(d,-d)*(gap+length),"right_line"} }
+        else
+            arms = { {Vector2.new(0,-gap),Vector2.new(0,-gap-length),"top_line"}, {Vector2.new(0,gap),Vector2.new(0,gap+length),"bottom_line"}, {Vector2.new(-gap,0),Vector2.new(-gap-length,0),"left_line"}, {Vector2.new(gap,0),Vector2.new(gap+length,0),"right_line"} }
+        end
+        for i=1,4 do
+            local a = arms[i]; local l = chLines[i]
+            if c.lines and a and c[a[3]] then
+                local f, tt = a[1], a[2]
+                local fr = Vector2.new(f.X*cv - f.Y*sv, f.X*sv + f.Y*cv)
+                local tr = Vector2.new(tt.X*cv - tt.Y*sv, tt.X*sv + tt.Y*cv)
+                l.From=anchor + fr; l.To=anchor + tr; l.Color=color
+                l.Thickness=c.thickness; l.Transparency=transp; l.Visible=true
+            else l.Visible=false end
+        end
+    end
+    if c.dot or c.style == "dot" then
+        local r = math.max(c.thickness, 1)
+        chDot.Position=anchor; chDot.Color=color; chDot.Radius=r
+        chDot.Transparency=transp; chDot.Visible=true
+    else chDot.Visible=false end
+
+    if c.text_enable and c.text_content ~= "" then
+        chText.Text = c.text_content
+        chText.TextSize = c.text_size
+        chText.TextColor3 = c.text_color
+        chText.TextStrokeTransparency = c.text_outline and 0 or 1
+        chText.Position = UDim2.fromOffset(anchor.X, anchor.Y + gap + length + c.text_offset)
+        chText.Visible = true
+    else chText.Visible = false end
+end)
+
+-- ==========================================================
+-- BACKGROUND (throttled retry, one-time)
+-- ==========================================================
 task.spawn(function()
     for i = 1, 6 do
         task.wait(0.5)
@@ -885,15 +738,6 @@ task.spawn(function()
             end
         end)
         if ok then break end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(2) do
-        local w = getWin()
-        if w and not w:FindFirstChild("sbg") then
-            pcall(applyBackground)
-        end
     end
 end)
 
