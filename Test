@@ -1,1 +1,988 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shammanpok3-cmyk/Rivals-/refs/heads/main/UElib"))()
 
+local t = Library.Theme
+if t then
+    t.Accent              = Color3.fromRGB(80, 80, 80)
+    t.Background          = Color3.fromRGB(10, 10, 10)
+    t.Header              = Color3.fromRGB(15, 15, 15)
+    t.TextColor           = Color3.fromRGB(220, 220, 220)
+    t.SubTextColor        = Color3.fromRGB(140, 140, 140)
+    t.TabBackground       = Color3.fromRGB(18, 18, 18)
+    t.TabActive           = Color3.fromRGB(50, 50, 50)
+    t.TabInactive         = Color3.fromRGB(22, 22, 22)
+    t.GroupBackground     = Color3.fromRGB(14, 14, 14)
+    t.GroupBorder         = Color3.fromRGB(40, 40, 40)
+    t.ToggleBackground    = Color3.fromRGB(25, 25, 25)
+    t.ToggleEnabled       = Color3.fromRGB(90, 90, 90)
+    t.ToggleDisabled      = Color3.fromRGB(30, 30, 30)
+    t.Outline             = Color3.fromRGB(35, 35, 35)
+    t.Divider             = Color3.fromRGB(30, 30, 30)
+    t.ScrollBar           = Color3.fromRGB(60, 60, 60)
+    t.ScrollBarBackground = Color3.fromRGB(18, 18, 18)
+end
+
+local imgUrl = "https://res.cloudinary.com/w8q7jrey/image/upload/v1789048821/Wallpaper%20backgrounds/Owner%20background.jpg"
+local folder = "Secret/Backgrounds"
+local cached = folder .. "/Owner_background.jpg"
+
+if not isfolder("Secret") then makefolder("Secret") end
+if not isfolder(folder) then makefolder(folder) end
+
+local function getWin()
+    local sg = Library.ScreenGui
+    if not sg then return nil end
+    for _, v in ipairs(sg:GetChildren()) do
+        if v:IsA("Frame") and v.Visible and v.AbsoluteSize.X > 300 then return v end
+    end
+end
+
+local function applyBg(id)
+    local win = getWin()
+    if not win then return end
+    for _, v in ipairs(win:GetChildren()) do
+        if v.Name == "sbg" or v.Name == "sov" then v:Destroy() end
+    end
+    local img = Instance.new("ImageLabel")
+    img.Name="sbg"; img.BackgroundTransparency=1; img.Image=id
+    img.Size=UDim2.fromScale(1,1); img.ZIndex=0
+    img.ScaleType=Enum.ScaleType.Crop; img.Parent=win
+    local ov = Instance.new("Frame")
+    ov.Name="sov"; ov.BackgroundColor3=Color3.new(0,0,0)
+    ov.BackgroundTransparency=0.55; ov.BorderSizePixel=0
+    ov.Size=UDim2.fromScale(1,1); ov.ZIndex=1; ov.Parent=win
+end
+
+local function fetchBg()
+    if isfile(cached) then delfile(cached) end
+    local ok, raw = pcall(game.HttpGet, game, imgUrl)
+    if not ok or type(raw) ~= "string" or #raw < 200 then
+        Library:Notify("bg failed", 4); return
+    end
+    writefile(cached, raw)
+    if getcustomasset then
+        applyBg(getcustomasset(cached))
+        Library:Notify("bg loaded", 3)
+    else
+        Library:Notify("no getcustomasset", 4)
+    end
+end
+
+local function stripAlpha(root)
+    if not root then return end
+    for _, v in ipairs(root:GetDescendants()) do
+        if v:IsA("Frame") or v:IsA("ScrollingFrame") then
+            if v.Name == "sbg" or v.Name == "sov" then continue end
+            local s = v.AbsoluteSize
+            if s.X > 120 and s.Y > 40 and v.BackgroundTransparency < 0.4 then
+                v.BackgroundTransparency = 0.55
+            end
+        end
+    end
+end
+
+local function nukeBlue(root)
+    if not root then return end
+    for _, v in ipairs(root:GetDescendants()) do
+        if v:IsA("Frame") or v:IsA("ScrollingFrame") then
+            local c = v.BackgroundColor3
+            if c.B > 0.35 and c.B > c.R + 0.1 then
+                local m = (c.R + c.G + c.B) / 3
+                v.BackgroundColor3 = Color3.new(m*0.6, m*0.6, m*0.6)
+            end
+        elseif v:IsA("TextLabel") or v:IsA("TextButton") then
+            local tc = v.TextColor3
+            if tc.B > 0.35 and tc.B > tc.R + 0.1 then v.TextColor3 = Color3.fromRGB(200,200,200) end
+            local bc = v.BackgroundColor3
+            if bc.B > 0.35 and bc.B > bc.R + 0.1 then v.BackgroundColor3 = Color3.fromRGB(20,20,20) end
+        elseif v:IsA("UIStroke") then
+            local c = v.Color
+            if c.B > 0.35 and c.B > c.R + 0.1 then v.Color = Color3.fromRGB(50,50,50) end
+        elseif v:IsA("ImageLabel") or v:IsA("ImageButton") then
+            local c = v.ImageColor3
+            if c.B > 0.35 and c.B > c.R + 0.1 then v.ImageColor3 = Color3.fromRGB(160,160,160) end
+        end
+    end
+end
+
+local win = Library:CreateWindow({ Title = "Secret | Rivals", Center = true, AutoShow = true })
+local tabs = { main = win:AddTab("Main"), visual = win:AddTab("Visual") }
+
+local core = tabs.main:AddLeftGroupbox("Core")
+core:AddLabel("Secret online — Owner background")
+core:AddToggle("ex", { Text = "Example feature", Default = false })
+
+-- ==========================================================
+-- VISUAL TAB — full Eliusm visuals + skybox
+-- ==========================================================
+local RunService   = game:GetService("RunService")
+local Players      = game:GetService("Players")
+local SoundService = game:GetService("SoundService")
+local Lighting     = game:GetService("Lighting")
+local Debris       = game:GetService("Debris")
+local LocalPlayer  = Players.LocalPlayer
+local Camera       = workspace.CurrentCamera
+local Mouse        = LocalPlayer:GetMouse()
+
+local function V2(x,y) return Vector2.new(x,y) end
+local function C3(r,g,b) return Color3.fromRGB(math.clamp(r or 0,0,255), math.clamp(g or 0,0,255), math.clamp(b or 0,0,255)) end
+
+local VIS = {
+    chams = { enable=false, team_check=false, mode="highlight",
+        fill_color=Color3.fromRGB(0,170,255), fill_transparency=0.5,
+        outline_color=Color3.new(1,1,1), outline_transparency=0,
+        material="Neon", strip_textures=false, ghost=false },
+    crosshair = { enable=false, style="cross", lines=true,
+        top_line=true, bottom_line=true, left_line=true, right_line=true,
+        rotation=0, length=6, thickness=1, gap=3,
+        color=Color3.fromRGB(0,255,170),
+        outline=false, outline_color=Color3.new(),
+        dot=false, rotating=false, rotating_speed=120,
+        spread=false, spread_scale=1,
+        animation=false, animation_mode="pulse", animation_speed=3,
+        fade=false, fade_color=Color3.fromRGB(255,0,170),
+        follow_target=false, follow_source="target",
+        shimmer=false, shimmer_speed=4,
+        text_enable=false, text_content="elisium", text_font="Plex",
+        text_size=16, text_offset=18, text_color=Color3.new(1,1,1),
+        text_outline=true, text_animation=false },
+    motion_blur = { enable=false, intensity=0.5, sensitivity=1 },
+    disable_anims = { enable=false, select={} },
+    tracers = { enable=false, color_start=Color3.new(1,1,1), color_end=Color3.new(1,1,1),
+        life_time=1.5, glow=4, width0=0.35, width1=0.15, speed=3,
+        through_walls=false },
+    trajectory = { enable=false, all_weapons=false, speed=90, arc_up=10,
+        color=Color3.fromRGB(120,81,166) },
+    death_effects = { enable=false, type="Explosion", color=Color3.fromRGB(120,81,166) },
+    damage_numbers = { enable=false, color_type="Gradient",
+        color1=Color3.fromRGB(255,80,80), color2=Color3.fromRGB(255,210,90),
+        font="GothamBold", duration=0.8, rise=42, text_size=18 },
+    hitsounds = { enable=false, remove_default=false, volume=3, pitch=1, selected="windows xp" },
+    hit_notify = { enable=false, duration=3, msg="Hit {target} for {damage}" },
+    viewmodel = {
+        weapon_chams = { enable=false, color=Color3.new(1,1,1), material="Neon", transparency=0 },
+        arm_chams = { enable=false, color=Color3.new(1,1,1), material="Neon", transparency=0, invisible=false },
+        weapon_highlight = { enable=false, color=Color3.new(1,1,1), transparency=0.5, outline_color=Color3.new(1,1,1), outline_transparency=0 },
+        arm_highlight = { enable=false, color=Color3.new(1,1,1), transparency=0.5, outline_color=Color3.new(1,1,1), outline_transparency=0 },
+        offsets = { enable=false, x=0, y=0, z=0 },
+        custom_body = { color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", disable_clothes=false, transparency=0 },
+        custom_item = { color_enable=false, color=Color3.new(1,1,1), material_enable=false, material="ForceField", transparency=0 },
+    },
+    target_hud = { enable=false, target_method="silent aim", position_mode="static",
+        offset_x=0, offset_y=0, scale=1 },
+}
+
+-- ============ CHAMS ============
+local chamsBox = tabs.visual:AddLeftGroupbox("Chams")
+local chamsHL, chamsBody = {}, {}
+
+local function dropChams(plr)
+    if chamsHL[plr] then chamsHL[plr]:Destroy(); chamsHL[plr] = nil end
+    local s = chamsBody[plr]
+    if s then
+        for p, d in pairs(s) do
+            if p.Parent then
+                p.Material = d.m; p.Color = d.c; p.Reflectance = d.r; p.Transparency = d.t
+                for tex, tt in pairs(d.tex) do if tex.Parent then tex.Transparency = tt end end
+            end
+        end
+        chamsBody[plr] = nil
+    end
+end
+
+local function applyChams(plr)
+    if plr == LocalPlayer then return end
+    local ch = plr.Character
+    if not ch then return dropChams(plr) end
+    local hum = ch:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return dropChams(plr) end
+    if VIS.chams.team_check and plr:GetAttribute("TeamID") == LocalPlayer:GetAttribute("TeamID") then return dropChams(plr) end
+    if VIS.chams.mode == "chams" then
+        if chamsHL[plr] then chamsHL[plr]:Destroy(); chamsHL[plr] = nil end
+        chamsBody[plr] = chamsBody[plr] or {}
+        for _, p in ipairs(ch:GetDescendants()) do
+            if p:IsA("BasePart") and p.Transparency < 1 then
+                if not chamsBody[plr][p] then
+                    local tex = {}
+                    for _, tt in ipairs(p:GetChildren()) do
+                        if tt:IsA("Decal") or tt:IsA("Texture") then tex[tt] = tt.Transparency end
+                    end
+                    chamsBody[plr][p] = { m=p.Material, c=p.Color, r=p.Reflectance, t=p.Transparency, tex=tex }
+                end
+                p.Material = Enum.Material[VIS.chams.material] or Enum.Material.Neon
+                p.Color = VIS.chams.fill_color
+                p.Reflectance = 0
+                p.Transparency = VIS.chams.ghost and math.max(0.55, VIS.chams.fill_transparency) or VIS.chams.fill_transparency
+                if VIS.chams.strip_textures then
+                    for tex in pairs(chamsBody[plr][p].tex) do if tex.Parent then tex.Transparency = 1 end end
+                end
+            end
+        end
+    else
+        if chamsBody[plr] then dropChams(plr) end
+        local hl = chamsHL[plr]
+        if not hl or not hl.Parent then
+            hl = Instance.new("Highlight")
+            hl.Name="secret_chams"; hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent=ch; chamsHL[plr]=hl
+        end
+        hl.Adornee = ch
+        hl.FillColor = VIS.chams.fill_color
+        hl.FillTransparency = VIS.chams.fill_transparency
+        hl.OutlineColor = VIS.chams.outline_color
+        hl.OutlineTransparency = VIS.chams.outline_transparency
+    end
+end
+
+local lastChams = 0
+RunService.Heartbeat:Connect(function()
+    if not VIS.chams.enable then
+        for p in pairs(chamsHL) do dropChams(p) end
+        for p in pairs(chamsBody) do dropChams(p) end
+        return
+    end
+    local now = tick()
+    if now - lastChams < 0.2 then return end
+    lastChams = now
+    for _, plr in ipairs(Players:GetPlayers()) do if plr ~= LocalPlayer then applyChams(plr) end end
+end)
+
+chamsBox:AddToggle("chams_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.chams.enable=v end })
+chamsBox:AddToggle("chams_team", { Text="Team Check", Default=false, Callback=function(v) VIS.chams.team_check=v end })
+chamsBox:AddDropdown("chams_mode", { Text="Type", Values={"highlight","chams"}, Default="highlight", Callback=function(v) VIS.chams.mode=v end })
+chamsBox:AddDropdown("chams_mat", { Text="Material", Values={"Neon","ForceField","Glass","Ice","Plastic","Foil","Glacier","CorrodedMetal"}, Default="Neon", Callback=function(v) VIS.chams.material=v end })
+chamsBox:AddToggle("chams_strip", { Text="Strip Textures", Default=false, Callback=function(v) VIS.chams.strip_textures=v end })
+chamsBox:AddToggle("chams_ghost", { Text="Ghost", Default=false, Callback=function(v) VIS.chams.ghost=v end })
+chamsBox:AddSlider("chams_fr", { Text="Fill R", Min=0, Max=255, Default=0, Rounding=0, Callback=function(v) local c=VIS.chams.fill_color; VIS.chams.fill_color=C3(v,c.G*255,c.B*255) end })
+chamsBox:AddSlider("chams_fg", { Text="Fill G", Min=0, Max=255, Default=170, Rounding=0, Callback=function(v) local c=VIS.chams.fill_color; VIS.chams.fill_color=C3(c.R*255,v,c.B*255) end })
+chamsBox:AddSlider("chams_fb", { Text="Fill B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.chams.fill_color; VIS.chams.fill_color=C3(c.R*255,c.G*255,v) end })
+chamsBox:AddSlider("chams_ft", { Text="Fill Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.chams.fill_transparency=v end })
+chamsBox:AddSlider("chams_or", { Text="Outline R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.chams.outline_color; VIS.chams.outline_color=C3(v,c.G*255,c.B*255) end })
+chamsBox:AddSlider("chams_og", { Text="Outline G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.chams.outline_color; VIS.chams.outline_color=C3(c.R*255,v,c.B*255) end })
+chamsBox:AddSlider("chams_ob", { Text="Outline B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.chams.outline_color; VIS.chams.outline_color=C3(c.R*255,c.G*255,v) end })
+
+-- ============ CROSSHAIR ============
+local chBox = tabs.visual:AddRightGroupbox("Crosshair")
+
+local chLines, chLinesO = {}, {}
+for i = 1, 4 do
+    local o = Drawing.new("Line"); o.Visible=false; o.Thickness=3; o.Transparency=1; o.Color=Color3.new(); chLinesO[i]=o
+    local l = Drawing.new("Line"); l.Visible=false; l.Thickness=1; l.Transparency=1; chLines[i]=l
+end
+local chRingO = Drawing.new("Circle"); chRingO.Filled=false; chRingO.NumSides=48; chRingO.Thickness=3; chRingO.Transparency=1; chRingO.Color=Color3.new(); chRingO.Visible=false
+local chRing  = Drawing.new("Circle"); chRing.Filled=false; chRing.NumSides=48; chRing.Thickness=1; chRing.Transparency=1; chRing.Visible=false
+local chDotO  = Drawing.new("Circle"); chDotO.Filled=true; chDotO.NumSides=24; chDotO.Radius=1; chDotO.Transparency=1; chDotO.Color=Color3.new(); chDotO.Visible=false
+local chDot   = Drawing.new("Circle"); chDot.Filled=true; chDot.NumSides=24; chDot.Radius=1; chDot.Transparency=1; chDot.Visible=false
+
+local chGui = Instance.new("ScreenGui")
+chGui.Name="secret_crosshair"; chGui.ResetOnSpawn=false; chGui.IgnoreGuiInset=true; chGui.DisplayOrder=999
+pcall(function() chGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
+
+local chText = Instance.new("TextLabel")
+chText.BackgroundTransparency=1; chText.AnchorPoint=Vector2.new(0.5,0)
+chText.Size=UDim2.fromOffset(0,0); chText.AutomaticSize=Enum.AutomaticSize.XY
+chText.TextXAlignment=Enum.TextXAlignment.Center; chText.Font=Enum.Font.Code
+chText.Visible=false; chText.Parent=chGui
+
+local chSpin, chClock = 0, 0
+
+local function local_speed()
+    local ch = LocalPlayer.Character
+    local root = ch and ch:FindFirstChild("HumanoidRootPart")
+    if not root then return 0 end
+    local v = root.AssemblyLinearVelocity
+    return Vector2.new(v.X, v.Z).Magnitude
+end
+
+local function ch_anchor()
+    local c = VIS.crosshair
+    if c.follow_target then
+        if c.follow_source == "gunpoint" then
+            local fp = workspace:FindFirstChild("ViewModels")
+            local first = fp and fp:FindFirstChild("FirstPerson")
+            if first then
+                for _, p in ipairs(first:GetDescendants()) do
+                    if p.Name == "_muzzle" and p:IsA("Attachment") then
+                        local sp = Camera:WorldToViewportPoint(p.WorldPosition)
+                        return V2(sp.X, sp.Y)
+                    end
+                end
+            end
+        else
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then
+                    local part = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild("HumanoidRootPart")
+                    if part then
+                        local sp, on = Camera:WorldToViewportPoint(part.Position)
+                        if on then return V2(sp.X, sp.Y) end
+                    end
+                end
+            end
+        end
+    end
+    local vp = Camera.ViewportSize
+    return V2(vp.X/2, vp.Y/2)
+end
+
+local function hideCrosshair()
+    for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
+    chRing.Visible=false; chRingO.Visible=false; chDot.Visible=false; chDotO.Visible=false; chText.Visible=false
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    local c = VIS.crosshair
+    if not c.enable then hideCrosshair() return end
+    chClock = chClock + dt
+    if c.rotating then chSpin = (chSpin + c.rotating_speed * dt) % 360 end
+    local rad = math.rad(c.rotation + (c.rotating and chSpin or 0))
+    local cv, sv = math.cos(rad), math.sin(rad)
+    local anchor = ch_anchor()
+
+    local length, gap = c.length, c.gap
+    if c.animation then
+        local w = (math.sin(chClock * c.animation_speed) + 1) * 0.5
+        if c.animation_mode == "breathe" then gap = gap + w * length * 0.6
+        else length = length * (0.55 + w * 0.45) end
+    end
+    if c.spread then gap = gap + math.clamp(local_speed() * 0.12 * c.spread_scale, 0, 60) end
+    local color = c.color
+    if c.fade then color = c.color:Lerp(c.fade_color, (math.sin(chClock*1.5)+1)*0.5) end
+    local transp = 1
+    if c.shimmer then transp = 0.45 + (math.sin(chClock*c.shimmer_speed)+1)*0.5*0.55 end
+
+    if c.style == "circle" then
+        for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
+        chDot.Visible=false; chDotO.Visible=false
+        if c.outline then
+            chRingO.Position=anchor; chRingO.Radius=length; chRingO.Color=c.outline_color
+            chRingO.Thickness=c.thickness+2; chRingO.Transparency=transp; chRingO.Visible=true
+        else chRingO.Visible=false end
+        chRing.Position=anchor; chRing.Radius=length; chRing.Color=color
+        chRing.Thickness=c.thickness; chRing.Transparency=transp; chRing.Visible=true
+    elseif c.style == "dot" then
+        for i=1,4 do chLines[i].Visible=false; chLinesO[i].Visible=false end
+        chRing.Visible=false; chRingO.Visible=false
+    else
+        chRing.Visible=false; chRingO.Visible=false
+        local arms
+        if c.style == "t" then
+            arms = { {V2(0,gap),V2(0,gap+length),"bottom_line"}, {V2(-gap,0),V2(-gap-length,0),"left_line"}, {V2(gap,0),V2(gap+length,0),"right_line"} }
+        elseif c.style == "x" then
+            local d = 0.7071
+            arms = { {V2(-d,-d)*gap,V2(-d,-d)*(gap+length),"top_line"}, {V2(d,d)*gap,V2(d,d)*(gap+length),"bottom_line"}, {V2(-d,d)*gap,V2(-d,d)*(gap+length),"left_line"}, {V2(d,-d)*gap,V2(d,-d)*(gap+length),"right_line"} }
+        else
+            arms = { {V2(0,-gap),V2(0,-gap-length),"top_line"}, {V2(0,gap),V2(0,gap+length),"bottom_line"}, {V2(-gap,0),V2(-gap-length,0),"left_line"}, {V2(gap,0),V2(gap+length,0),"right_line"} }
+        end
+        for i=1,4 do
+            local a = arms[i]; local l = chLines[i]; local o = chLinesO[i]
+            if c.lines and a and c[a[3]] then
+                local f, tt = a[1], a[2]
+                local fr = Vector2.new(f.X*cv - f.Y*sv, f.X*sv + f.Y*cv)
+                local tr = Vector2.new(tt.X*cv - tt.Y*sv, tt.X*sv + tt.Y*cv)
+                local from, to = anchor + fr, anchor + tr
+                if c.outline then
+                    o.From=from; o.To=to; o.Color=c.outline_color
+                    o.Thickness=c.thickness+2; o.Transparency=transp; o.Visible=true
+                else o.Visible=false end
+                l.From=from; l.To=to; l.Color=color
+                l.Thickness=c.thickness; l.Transparency=transp; l.Visible=true
+            else l.Visible=false; o.Visible=false end
+        end
+    end
+    if c.dot or c.style == "dot" then
+        local r = math.max(c.thickness, 1)
+        if c.outline then
+            chDotO.Position=anchor; chDotO.Color=c.outline_color
+            chDotO.Radius=r+1; chDotO.Transparency=transp; chDotO.Visible=true
+        else chDotO.Visible=false end
+        chDot.Position=anchor; chDot.Color=color; chDot.Radius=r
+        chDot.Transparency=transp; chDot.Visible=true
+    else chDot.Visible=false; chDotO.Visible=false end
+
+    if c.text_enable and c.text_content ~= "" then
+        local tc = c.text_color
+        if c.text_animation then tc = Color3.fromHSV((chClock * 0.15) % 1, 0.65, 1) end
+        chText.Text = c.text_content
+        chText.TextSize = c.text_size
+        chText.TextColor3 = tc
+        chText.TextStrokeTransparency = c.text_outline and 0 or 1
+        chText.Position = UDim2.fromOffset(anchor.X, anchor.Y + gap + length + c.text_offset)
+        chText.Visible = true
+    else chText.Visible = false end
+end)
+
+chBox:AddToggle("ch_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.crosshair.enable=v end })
+chBox:AddDropdown("ch_style", { Text="Style", Values={"cross","t","x","circle","dot"}, Default="cross", Callback=function(v) VIS.crosshair.style=v end })
+chBox:AddToggle("ch_lines", { Text="Lines", Default=true, Callback=function(v) VIS.crosshair.lines=v end })
+chBox:AddToggle("ch_dot", { Text="Dot", Default=false, Callback=function(v) VIS.crosshair.dot=v end })
+chBox:AddToggle("ch_outline", { Text="Outline", Default=false, Callback=function(v) VIS.crosshair.outline=v end })
+chBox:AddSlider("ch_len", { Text="Length", Min=0, Max=40, Default=6, Rounding=0, Callback=function(v) VIS.crosshair.length=v end })
+chBox:AddSlider("ch_thick", { Text="Thickness", Min=1, Max=6, Default=1, Rounding=0, Callback=function(v) VIS.crosshair.thickness=v end })
+chBox:AddSlider("ch_gap", { Text="Gap", Min=0, Max=20, Default=3, Rounding=0, Callback=function(v) VIS.crosshair.gap=v end })
+chBox:AddSlider("ch_rot", { Text="Rotation", Min=0, Max=360, Default=0, Rounding=0, Callback=function(v) VIS.crosshair.rotation=v end })
+chBox:AddSlider("ch_spd", { Text="Rotate Speed", Min=0, Max=720, Default=120, Rounding=0, Callback=function(v) VIS.crosshair.rotating_speed=v end })
+chBox:AddToggle("ch_rotating", { Text="Rotating", Default=false, Callback=function(v) VIS.crosshair.rotating=v end })
+chBox:AddToggle("ch_spread", { Text="Spread", Default=false, Callback=function(v) VIS.crosshair.spread=v end })
+chBox:AddSlider("ch_spread_scale", { Text="Spread Scale", Min=0, Max=4, Default=1, Rounding=2, Callback=function(v) VIS.crosshair.spread_scale=v end })
+chBox:AddToggle("ch_anim", { Text="Animation", Default=false, Callback=function(v) VIS.crosshair.animation=v end })
+chBox:AddDropdown("ch_anim_mode", { Text="Animation Mode", Values={"pulse","breathe"}, Default="pulse", Callback=function(v) VIS.crosshair.animation_mode=v end })
+chBox:AddSlider("ch_anim_spd", { Text="Animation Speed", Min=0.1, Max=12, Default=3, Rounding=1, Callback=function(v) VIS.crosshair.animation_speed=v end })
+chBox:AddToggle("ch_fade", { Text="Fade", Default=false, Callback=function(v) VIS.crosshair.fade=v end })
+chBox:AddSlider("ch_fade_r", { Text="Fade R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.crosshair.fade_color; VIS.crosshair.fade_color=C3(v,c.G*255,c.B*255) end })
+chBox:AddSlider("ch_fade_g", { Text="Fade G", Min=0, Max=255, Default=0, Rounding=0, Callback=function(v) local c=VIS.crosshair.fade_color; VIS.crosshair.fade_color=C3(c.R*255,v,c.B*255) end })
+chBox:AddSlider("ch_fade_b", { Text="Fade B", Min=0, Max=255, Default=170, Rounding=0, Callback=function(v) local c=VIS.crosshair.fade_color; VIS.crosshair.fade_color=C3(c.R*255,c.G*255,v) end })
+chBox:AddToggle("ch_follow", { Text="Follow Target", Default=false, Callback=function(v) VIS.crosshair.follow_target=v end })
+chBox:AddDropdown("ch_follow_src", { Text="Follow Source", Values={"target","gunpoint"}, Default="target", Callback=function(v) VIS.crosshair.follow_source=v end })
+chBox:AddToggle("ch_shimmer", { Text="Shimmer", Default=false, Callback=function(v) VIS.crosshair.shimmer=v end })
+chBox:AddSlider("ch_shimmer_spd", { Text="Shimmer Speed", Min=0.1, Max=12, Default=4, Rounding=1, Callback=function(v) VIS.crosshair.shimmer_speed=v end })
+chBox:AddToggle("ch_top", { Text="Top Line", Default=true, Callback=function(v) VIS.crosshair.top_line=v end })
+chBox:AddToggle("ch_bot", { Text="Bottom Line", Default=true, Callback=function(v) VIS.crosshair.bottom_line=v end })
+chBox:AddToggle("ch_left", { Text="Left Line", Default=true, Callback=function(v) VIS.crosshair.left_line=v end })
+chBox:AddToggle("ch_right", { Text="Right Line", Default=true, Callback=function(v) VIS.crosshair.right_line=v end })
+chBox:AddSlider("ch_r", { Text="R", Min=0, Max=255, Default=0, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(v,VIS.crosshair.color.G*255,VIS.crosshair.color.B*255) end })
+chBox:AddSlider("ch_g", { Text="G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,v,VIS.crosshair.color.B*255) end })
+chBox:AddSlider("ch_b", { Text="B", Min=0, Max=255, Default=170, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,VIS.crosshair.color.G*255,v) end })
+chBox:AddToggle("ch_text", { Text="Text", Default=false, Callback=function(v) VIS.crosshair.text_enable=v end })
+chBox:AddInput("ch_text_val", { Text="Text Value", Default="elisium", Callback=function(v) VIS.crosshair.text_content=v end })
+chBox:AddSlider("ch_text_size", { Text="Text Size", Min=8, Max=48, Default=16, Rounding=0, Callback=function(v) VIS.crosshair.text_size=v end })
+chBox:AddSlider("ch_text_off", { Text="Text Offset", Min=0, Max=120, Default=18, Rounding=0, Callback=function(v) VIS.crosshair.text_offset=v end })
+chBox:AddToggle("ch_text_anim", { Text="Text Animation", Default=false, Callback=function(v) VIS.crosshair.text_animation=v end })
+chBox:AddToggle("ch_text_outline", { Text="Text Outline", Default=true, Callback=function(v) VIS.crosshair.text_outline=v end })
+
+-- ============ MOTION BLUR ============
+local mbBox = tabs.visual:AddLeftGroupbox("Motion Blur")
+local mbEffect = Instance.new("BlurEffect")
+mbEffect.Name="secret_motion_blur"; mbEffect.Size=0; mbEffect.Enabled=false; mbEffect.Parent=Lighting
+
+local mbLook = Camera.CFrame.LookVector
+RunService.RenderStepped:Connect(function(dt)
+    local c = VIS.motion_blur
+    if not c.enable then
+        if mbEffect.Enabled then mbEffect.Enabled=false; mbEffect.Size=0 end
+        mbLook = Camera.CFrame.LookVector; return
+    end
+    mbEffect.Enabled = true
+    local look = Camera.CFrame.LookVector
+    local d = (look - mbLook).Magnitude
+    mbLook = look
+    local target = math.clamp(d / math.max(dt,1/240) * c.sensitivity * c.intensity * 0.35, 0, 56 * c.intensity)
+    mbEffect.Size = mbEffect.Size + (target - mbEffect.Size) * math.min(dt * 20, 1)
+end)
+
+mbBox:AddToggle("mb_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.motion_blur.enable=v end })
+mbBox:AddSlider("mb_intensity", { Text="Intensity", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.motion_blur.intensity=v end })
+mbBox:AddSlider("mb_sens", { Text="Sensitivity", Min=0.1, Max=3, Default=1, Rounding=2, Callback=function(v) VIS.motion_blur.sensitivity=v end })
+
+-- ============ DISABLE ANIMATIONS ============
+local daBox = tabs.visual:AddLeftGroupbox("Disable Animations")
+daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
+daBox:AddDropdown("da_types", { Text="Types", Values={"bobbing","landing","sway","equip","inspect","sliding","shoot","impulse","aim","sprint","attack","charge","reload","throw"}, Default="bobbing", Callback=function(v) VIS.disable_anims.select={v} end })
+
+-- ============ BULLET TRACERS ============
+local btBox = tabs.visual:AddRightGroupbox("Bullet Tracers")
+local activeTracers = 0
+
+local function createBeam(from, to)
+    if activeTracers >= 48 then return end
+    activeTracers += 1
+    local t = VIS.tracers
+    local a = Instance.new("Part")
+    a.Anchored=true; a.CanCollide=false; a.CanQuery=false; a.CanTouch=false
+    a.Transparency=1; a.CFrame=CFrame.new(from); a.Parent=workspace
+    local b = Instance.new("Part")
+    b.Anchored=true; b.CanCollide=false; b.CanQuery=false; b.CanTouch=false
+    b.Transparency=1; b.CFrame=CFrame.new(from); b.Parent=workspace
+    local aa = Instance.new("Attachment", a)
+    local ba = Instance.new("Attachment", b)
+    local beam = Instance.new("Beam")
+    beam.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0,t.color_start), ColorSequenceKeypoint.new(0.5,t.color_end), ColorSequenceKeypoint.new(1,t.color_start) })
+    beam.Brightness=t.glow; beam.LightEmission=t.glow; beam.LightInfluence=0
+    beam.TextureSpeed=t.speed; beam.TextureLength=3; beam.FaceCamera=true
+    beam.Width0=t.width0; beam.Width1=t.width1
+    beam.Attachment0=aa; beam.Attachment1=ba; beam.Parent=workspace
+    local dist = (to - from).Magnitude
+    local unit = (to - from).Unit
+    local elapsed = 0
+    local conn
+    conn = RunService.Heartbeat:Connect(function(dt)
+        elapsed += dt
+        local alpha = math.min(elapsed / 0.05, 1)
+        b.CFrame = CFrame.new(from + unit * (dist * alpha))
+        if elapsed >= t.life_time then
+            conn:Disconnect()
+            beam:Destroy(); a:Destroy(); b:Destroy()
+            activeTracers = math.max(activeTracers - 1, 0)
+        end
+    end)
+end
+
+pcall(function()
+    local tp = LocalPlayer.PlayerScripts.Modules.TracerEffect
+    if not tp then return end
+    local mod = require(tp)
+    local old = mod.Play
+    mod.Play = function(...)
+        local args = {...}
+        if VIS.tracers.enable and args[2] and args[2].IsLocal then
+            local muzzle = args[4] and args[4].MuzzlePosition
+            if muzzle and args[2].RaycastResults then
+                for _, v in ipairs(args[2].RaycastResults) do
+                    if v.Position then createBeam(muzzle, v.Position) end
+                end
+            end
+            if not VIS.tracers.through_walls then return end
+        end
+        return old(...)
+    end
+end)
+
+btBox:AddToggle("bt_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.tracers.enable=v end })
+btBox:AddSlider("bt_r1", { Text="Start R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.tracers.color_start; VIS.tracers.color_start=C3(v,c.G*255,c.B*255) end })
+btBox:AddSlider("bt_g1", { Text="Start G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.tracers.color_start; VIS.tracers.color_start=C3(c.R*255,v,c.B*255) end })
+btBox:AddSlider("bt_b1", { Text="Start B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.tracers.color_start; VIS.tracers.color_start=C3(c.R*255,c.G*255,v) end })
+btBox:AddSlider("bt_r2", { Text="End R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.tracers.color_end; VIS.tracers.color_end=C3(v,c.G*255,c.B*255) end })
+btBox:AddSlider("bt_g2", { Text="End G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.tracers.color_end; VIS.tracers.color_end=C3(c.R*255,v,c.B*255) end })
+btBox:AddSlider("bt_b2", { Text="End B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.tracers.color_end; VIS.tracers.color_end=C3(c.R*255,c.G*255,v) end })
+btBox:AddSlider("bt_life", { Text="Lifetime", Min=0.1, Max=5, Default=1.5, Rounding=1, Callback=function(v) VIS.tracers.life_time=v end })
+btBox:AddSlider("bt_glow", { Text="Glow", Min=0, Max=10, Default=4, Rounding=0, Callback=function(v) VIS.tracers.glow=v end })
+btBox:AddSlider("bt_w0", { Text="Width Start", Min=0, Max=2, Default=0.35, Rounding=2, Callback=function(v) VIS.tracers.width0=v end })
+btBox:AddSlider("bt_w1", { Text="Width End", Min=0, Max=2, Default=0.15, Rounding=2, Callback=function(v) VIS.tracers.width1=v end })
+btBox:AddSlider("bt_speed", { Text="Speed", Min=0, Max=10, Default=3, Rounding=1, Callback=function(v) VIS.tracers.speed=v end })
+btBox:AddToggle("bt_walls", { Text="Through Walls", Default=false, Callback=function(v) VIS.tracers.through_walls=v end })
+
+-- ============ TARGET HUD ============
+local hudBox = tabs.visual:AddRightGroupbox("Target HUD")
+local hudGui = Instance.new("ScreenGui")
+hudGui.Name="secret_hud"; hudGui.ResetOnSpawn=false; hudGui.IgnoreGuiInset=true; hudGui.DisplayOrder=998
+pcall(function() hudGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
+local hudFrame = Instance.new("Frame")
+hudFrame.Size=UDim2.fromOffset(240,64); hudFrame.Position=UDim2.fromOffset(14,100)
+hudFrame.BackgroundColor3=Color3.fromRGB(18,18,18)
+hudFrame.BorderSizePixel=0; hudFrame.Visible=false; hudFrame.Parent=hudGui
+local hudStroke = Instance.new("UIStroke"); hudStroke.Color=Color3.fromRGB(80,80,80); hudStroke.Thickness=1; hudStroke.Parent=hudFrame
+local hudName = Instance.new("TextLabel"); hudName.BackgroundTransparency=1; hudName.Size=UDim2.new(1,-12,0,20); hudName.Position=UDim2.fromOffset(6,4); hudName.Font=Enum.Font.Code; hudName.TextSize=14; hudName.TextColor3=Color3.new(1,1,1); hudName.TextXAlignment=Enum.TextXAlignment.Left; hudName.Text=""; hudName.Parent=hudFrame
+local hudHP = Instance.new("Frame"); hudHP.BackgroundColor3=Color3.fromRGB(20,20,20); hudHP.BorderSizePixel=0; hudHP.Position=UDim2.fromOffset(6,46); hudHP.Size=UDim2.new(1,-12,0,4); hudHP.Parent=hudFrame
+local hudHPFill = Instance.new("Frame"); hudHPFill.BackgroundColor3=Color3.fromRGB(90,90,90); hudHPFill.BorderSizePixel=0; hudHPFill.Size=UDim2.fromScale(1,1); hudHPFill.Parent=hudHP
+local hudLevel = Instance.new("TextLabel"); hudLevel.BackgroundTransparency=1; hudLevel.Size=UDim2.new(1,-12,0,18); hudLevel.Position=UDim2.fromOffset(6,24); hudLevel.Font=Enum.Font.Code; hudLevel.TextSize=12; hudLevel.TextColor3=Color3.fromRGB(200,200,200); hudLevel.TextXAlignment=Enum.TextXAlignment.Left; hudLevel.Text=""; hudLevel.Parent=hudFrame
+
+RunService.Heartbeat:Connect(function()
+    if not VIS.target_hud.enable then
+        if hudFrame.Visible then hudFrame.Visible=false end
+        return
+    end
+    -- Closest enemy
+    local closest, best = nil, math.huge
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then hudFrame.Visible=false; return end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local root = plr.Character:FindFirstChild("HumanoidRootPart")
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if root and hum and hum.Health > 0 then
+                if plr:GetAttribute("TeamID") ~= LocalPlayer:GetAttribute("TeamID") then
+                    local d = (root.Position - myRoot.Position).Magnitude
+                    if d < best then best = d; closest = plr end
+                end
+            end
+        end
+    end
+    if not closest then hudFrame.Visible=false; return end
+    local hum = closest.Character:FindFirstChildOfClass("Humanoid")
+    hudName.Text = closest.Name
+    hudLevel.Text = "Level: " .. tostring(closest:GetAttribute("Level") or "?")
+    hudHPFill.Size = UDim2.fromScale(hum.Health / math.max(hum.MaxHealth,1), 1)
+    local s = VIS.target_hud.scale
+    hudFrame.Size = UDim2.fromOffset(240 * s, 64 * s)
+    hudFrame.Position = UDim2.fromOffset(14 + VIS.target_hud.offset_x, 100 + VIS.target_hud.offset_y)
+    hudFrame.Visible = true
+end)
+
+hudBox:AddToggle("hud_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.target_hud.enable=v end })
+hudBox:AddDropdown("hud_method", { Text="Method", Values={"silent aim","aimbot"}, Default="silent aim", Callback=function(v) VIS.target_hud.target_method=v end })
+hudBox:AddDropdown("hud_pos", { Text="Position", Values={"static","center","gunpoint","target"}, Default="static", Callback=function(v) VIS.target_hud.position_mode=v end })
+hudBox:AddSlider("hud_ox", { Text="Offset X", Min=-500, Max=500, Default=0, Rounding=0, Callback=function(v) VIS.target_hud.offset_x=v end })
+hudBox:AddSlider("hud_oy", { Text="Offset Y", Min=-500, Max=500, Default=0, Rounding=0, Callback=function(v) VIS.target_hud.offset_y=v end })
+hudBox:AddSlider("hud_scale", { Text="Scale", Min=0.5, Max=2.5, Default=1, Rounding=2, Callback=function(v) VIS.target_hud.scale=v end })
+
+-- ============ TRAJECTORY ============
+local tjBox = tabs.visual:AddLeftGroupbox("Trajectory")
+local trajFolder = Instance.new("Folder"); trajFolder.Name="SecretTrajectory"; trajFolder.Parent=workspace
+local trajPool = {}
+
+local function getTrajPart(i)
+    if trajPool[i] and trajPool[i].Parent then return trajPool[i] end
+    local p = Instance.new("Part")
+    p.Anchored=true; p.CanCollide=false; p.CanQuery=false; p.CanTouch=false
+    p.Shape=Enum.PartType.Ball; p.Size=Vector3.new(0.4,0.4,0.4)
+    p.Material=Enum.Material.Neon; p.Parent=trajFolder
+    trajPool[i]=p; return p
+end
+
+RunService.RenderStepped:Connect(function()
+    local c = VIS.trajectory
+    if not c.enable then
+        for i=1,32 do if trajPool[i] then trajPool[i].Transparency=1 end end
+        return
+    end
+    local origin = Camera.CFrame.Position
+    local vel = Camera.CFrame.LookVector * c.speed + Vector3.new(0, c.arc_up, 0)
+    local gravity = Vector3.new(0, -workspace.Gravity, 0)
+    local pos = origin
+    for i=1,32 do
+        local nextPos = pos + vel * 0.07 + gravity * (0.5 * 0.07 * 0.07)
+        local p = getTrajPart(i)
+        p.Position=nextPos; p.Color=c.color; p.Transparency=0
+        pos=nextPos; vel=vel + gravity * 0.07
+    end
+end)
+
+tjBox:AddToggle("tj_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.trajectory.enable=v end })
+tjBox:AddToggle("tj_all", { Text="All Weapons", Default=false, Callback=function(v) VIS.trajectory.all_weapons=v end })
+tjBox:AddSlider("tj_speed", { Text="Throw Speed", Min=20, Max=300, Default=90, Rounding=0, Callback=function(v) VIS.trajectory.speed=v end })
+tjBox:AddSlider("tj_arc", { Text="Arc Height", Min=0, Max=60, Default=10, Rounding=0, Callback=function(v) VIS.trajectory.arc_up=v end })
+tjBox:AddSlider("tj_r", { Text="R", Min=0, Max=255, Default=120, Rounding=0, Callback=function(v) local c=VIS.trajectory.color; VIS.trajectory.color=C3(v,c.G*255,c.B*255) end })
+tjBox:AddSlider("tj_g", { Text="G", Min=0, Max=255, Default=81, Rounding=0, Callback=function(v) local c=VIS.trajectory.color; VIS.trajectory.color=C3(c.R*255,v,c.B*255) end })
+tjBox:AddSlider("tj_b", { Text="B", Min=0, Max=255, Default=166, Rounding=0, Callback=function(v) local c=VIS.trajectory.color; VIS.trajectory.color=C3(c.R*255,c.G*255,v) end })
+
+-- ============ DEATH EFFECTS ============
+local deBox = tabs.visual:AddLeftGroupbox("Death Effects")
+
+local function spawnDeath(pos)
+    local c = VIS.death_effects
+    if c.type == "Explosion" then
+        local e = Instance.new("Explosion")
+        e.Position=pos; e.BlastRadius=0; e.BlastPressure=0
+        e.DestroyJointRadiusPercent=0; e.Parent=workspace
+        return
+    end
+    local part = Instance.new("Part")
+    part.Anchored=true; part.CanCollide=false; part.CanQuery=false; part.CanTouch=false
+    part.Transparency=1; part.Size=Vector3.new(1,1,1)
+    part.CFrame=CFrame.new(pos); part.Parent=workspace
+    local att = Instance.new("Attachment", part)
+    local em = Instance.new("ParticleEmitter")
+    em.Color=ColorSequence.new(c.color)
+    em.Lifetime=NumberRange.new(0.4,0.9); em.Speed=NumberRange.new(12,28)
+    em.Rate=0; em.SpreadAngle=Vector2.new(180,180); em.Size=NumberSequence.new(1.5)
+    if c.type == "Fire" then em.Texture = "rbxasset://textures/particles/fire_main.dds"
+    elseif c.type == "Sparkles" then em.Texture = "rbxasset://textures/particles/sparkles_main.dds"; em.LightEmission=1
+    else em.Texture = "rbxasset://textures/particles/smoke_main.dds"; em.LightEmission=1 end
+    em.Parent=att; em:Emit(45)
+    Debris:AddItem(part, 1.3)
+end
+
+local function hookDeath(plr)
+    plr.CharacterAdded:Connect(function(ch)
+        local hum = ch:WaitForChild("Humanoid", 6)
+        if hum then
+            hum.Died:Connect(function()
+                if not VIS.death_effects.enable then return end
+                local root = ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("Head")
+                if root then spawnDeath(root.Position) end
+            end)
+        end
+    end)
+end
+for _, plr in ipairs(Players:GetPlayers()) do hookDeath(plr) end
+Players.PlayerAdded:Connect(hookDeath)
+
+deBox:AddToggle("de_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.death_effects.enable=v end })
+deBox:AddDropdown("de_type", { Text="Type", Values={"Explosion","Fire","Sparkles","Neon Burst"}, Default="Explosion", Callback=function(v) VIS.death_effects.type=v end })
+deBox:AddSlider("de_r", { Text="R", Min=0, Max=255, Default=120, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(v,c.G*255,c.B*255) end })
+deBox:AddSlider("de_g", { Text="G", Min=0, Max=255, Default=81, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,v,c.B*255) end })
+deBox:AddSlider("de_b", { Text="B", Min=0, Max=255, Default=166, Rounding=0, Callback=function(v) local c=VIS.death_effects.color; VIS.death_effects.color=C3(c.R*255,c.G*255,v) end })
+
+-- ============ DAMAGE NUMBERS ============
+local dmgBox = tabs.visual:AddRightGroupbox("Damage Numbers")
+local dmgGui = Instance.new("ScreenGui"); dmgGui.Name="secret_dmg"; dmgGui.ResetOnSpawn=false; dmgGui.IgnoreGuiInset=true; dmgGui.DisplayOrder=500
+pcall(function() dmgGui.Parent=(gethui and gethui()) or game:GetService("CoreGui") end)
+
+dmgBox:AddToggle("dmg_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.damage_numbers.enable=v end })
+dmgBox:AddToggle("dmg_remove", { Text="Remove In-Game", Default=false, Callback=function(v) end })
+dmgBox:AddDropdown("dmg_colortype", { Text="Color Type", Values={"Gradient","Solid","Rainbow"}, Default="Gradient", Callback=function(v) VIS.damage_numbers.color_type=v end })
+dmgBox:AddSlider("dmg_c1_r", { Text="Color1 R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(v,c.G*255,c.B*255) end })
+dmgBox:AddSlider("dmg_c1_g", { Text="Color1 G", Min=0, Max=255, Default=80, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(c.R*255,v,c.B*255) end })
+dmgBox:AddSlider("dmg_c1_b", { Text="Color1 B", Min=0, Max=255, Default=80, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color1; VIS.damage_numbers.color1=C3(c.R*255,c.G*255,v) end })
+dmgBox:AddSlider("dmg_c2_r", { Text="Color2 R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(v,c.G*255,c.B*255) end })
+dmgBox:AddSlider("dmg_c2_g", { Text="Color2 G", Min=0, Max=255, Default=210, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(c.R*255,v,c.B*255) end })
+dmgBox:AddSlider("dmg_c2_b", { Text="Color2 B", Min=0, Max=255, Default=90, Rounding=0, Callback=function(v) local c=VIS.damage_numbers.color2; VIS.damage_numbers.color2=C3(c.R*255,c.G*255,v) end })
+dmgBox:AddDropdown("dmg_font", { Text="Font", Values={"GothamBold","GothamBlack","Code","SourceSansBold","RobotoMono","Arcade","SciFi","Cartoon","Bangers","Michroma"}, Default="GothamBold", Callback=function(v) VIS.damage_numbers.font=v end })
+dmgBox:AddSlider("dmg_size", { Text="Text Size", Min=10, Max=40, Default=18, Rounding=0, Callback=function(v) VIS.damage_numbers.text_size=v end })
+dmgBox:AddSlider("dmg_rise", { Text="Rise", Min=0, Max=120, Default=42, Rounding=0, Callback=function(v) VIS.damage_numbers.rise=v end })
+dmgBox:AddSlider("dmg_dur", { Text="Duration", Min=0.2, Max=3, Default=0.8, Rounding=2, Callback=function(v) VIS.damage_numbers.duration=v end })
+
+-- ============ HITSOUNDS ============
+local hsBox = tabs.visual:AddLeftGroupbox("Hit Sounds")
+local hitsoundMap = {
+    ["windows xp"]="rbxassetid://108009100115241",
+    ["minecraft bow"]="rbxassetid://3442683707",
+    ["neverlose"]="rbxassetid://97643101798871",
+    ["steve"]="rbxassetid://132883456216684",
+    ["among us"]="rbxassetid://93866204681438",
+    ["bonk"]="rbxassetid://5766898159",
+    ["rust"]="rbxassetid://1255040462",
+    ["fatality"]="rbxassetid://6534947869",
+    ["hitmarker"]="rbxassetid://133749572213659",
+    ["csgo"]="rbxassetid://5764885315",
+}
+local hsSound = Instance.new("Sound"); hsSound.Name="secret_hitsound"; hsSound.Volume=1; hsSound.Parent=SoundService
+
+pcall(function()
+    local path = LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem
+    local vmModule = path:WaitForChild("ClientViewModel", 5)
+    if not vmModule then return end
+    local cvm = require(vmModule)
+    local old = cvm.PlayHitmarkerSound
+    cvm.PlayHitmarkerSound = function(self, crit, pitch)
+        if VIS.hitsounds.enable and VIS.hitsounds.selected and hitsoundMap[VIS.hitsounds.selected] then
+            hsSound.SoundId = hitsoundMap[VIS.hitsounds.selected]
+            hsSound.Volume = VIS.hitsounds.volume
+            hsSound.PlaybackSpeed = VIS.hitsounds.pitch
+            hsSound:Play()
+            if VIS.hitsounds.remove_default then return end
+        end
+        return old(self, crit, pitch)
+    end
+end)
+
+hsBox:AddToggle("hs_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.hitsounds.enable=v end })
+hsBox:AddToggle("hs_remove", { Text="Disable Default", Default=false, Callback=function(v) VIS.hitsounds.remove_default=v end })
+hsBox:AddDropdown("hs_sel", { Text="Sound", Values={"windows xp","minecraft bow","neverlose","steve","among us","bonk","rust","fatality","hitmarker","csgo"}, Default="windows xp", Callback=function(v) VIS.hitsounds.selected=v end })
+hsBox:AddSlider("hs_vol", { Text="Volume", Min=0, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hitsounds.volume=v end })
+hsBox:AddSlider("hs_pitch", { Text="Pitch", Min=0.5, Max=1.5, Default=1, Rounding=1, Callback=function(v) VIS.hitsounds.pitch=v end })
+
+-- ============ HIT NOTIFY ============
+local hnBox = tabs.visual:AddLeftGroupbox("Hit Notify")
+hnBox:AddToggle("hn_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.hit_notify.enable=v end })
+hnBox:AddSlider("hn_dur", { Text="Duration", Min=1, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hit_notify.duration=v end })
+hnBox:AddInput("hn_msg", { Text="Message", Default="Hit {target} for {damage}", Callback=function(v) VIS.hit_notify.msg=v end })
+hnBox:AddLabel("Formats: {target}, {damage}, {hitpart}")
+
+-- ============ VIEWMODEL CHAMS ============
+local vmcBox = tabs.visual:AddLeftGroupbox("Viewmodel Chams")
+local vmTrack, vmHL = {}, {}
+
+local function vmIsArm(p)
+    local n = string.lower(p.Name)
+    return n:find("arm",1,true) or n:find("hand",1,true)
+end
+local function vmVisible(p) return p.Transparency < 1 and p.Size.Magnitude < 40 end
+
+local function vmStore(p)
+    if not vmTrack[p] then
+        vmTrack[p] = { m=p.Material, c=p.Color, r=p.Reflectance, t=p.Transparency, l=p.LocalTransparencyModifier }
+    end
+end
+local function vmRestore(p)
+    local s = vmTrack[p]
+    if s and p.Parent then
+        p.Material=s.m; p.Color=s.c; p.Reflectance=s.r; p.Transparency=s.t; p.LocalTransparencyModifier=s.l
+    end
+    vmTrack[p]=nil
+end
+local function vmSetHL(p, cfg)
+    local h = vmHL[p]
+    if not h or not h.Parent then
+        h = Instance.new("Highlight")
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Adornee = p; h.Parent = p
+        vmHL[p] = h
+    end
+    h.FillColor=cfg.color; h.FillTransparency=cfg.transparency
+    h.OutlineColor=cfg.outline_color; h.OutlineTransparency=cfg.outline_transparency
+end
+local function vmDropHL(p)
+    if vmHL[p] then vmHL[p]:Destroy(); vmHL[p]=nil end
+end
+
+RunService.Heartbeat:Connect(function()
+    local fp = workspace:FindFirstChild("ViewModels")
+    if not fp then return end
+    local first = fp:FindFirstChild("FirstPerson")
+    if not first then return end
+    local vmc = VIS.viewmodel
+    for _, p in ipairs(first:GetDescendants()) do
+        if p:IsA("BasePart") and vmVisible(p) then
+            local isArm = vmIsArm(p)
+            if isArm and vmc.arm_chams.enable then
+                vmStore(p)
+                if vmc.arm_chams.invisible then p.Transparency=1; p.LocalTransparencyModifier=1
+                else
+                    p.Material = Enum.Material[vmc.arm_chams.material] or Enum.Material.Neon
+                    p.Color = vmc.arm_chams.color
+                    p.Transparency = vmc.arm_chams.transparency
+                    p.Reflectance = 0
+                end
+            elseif not isArm and vmc.weapon_chams.enable then
+                vmStore(p)
+                p.Material = Enum.Material[vmc.weapon_chams.material] or Enum.Material.Neon
+                p.Color = vmc.weapon_chams.color
+                p.Transparency = vmc.weapon_chams.transparency
+                p.Reflectance = 0
+            else vmRestore(p) end
+            if isArm and vmc.arm_highlight.enable then vmSetHL(p, vmc.arm_highlight)
+            elseif not isArm and vmc.weapon_highlight.enable then vmSetHL(p, vmc.weapon_highlight)
+            else vmDropHL(p) end
+        end
+    end
+end)
+
+vmcBox:AddToggle("vmc_w_enable", { Text="Weapon Chams", Default=false, Callback=function(v) VIS.viewmodel.weapon_chams.enable=v end })
+vmcBox:AddDropdown("vmc_w_mat", { Text="Weapon Material", Values={"Neon","ForceField","Glass","Ice","Plastic"}, Default="Neon", Callback=function(v) VIS.viewmodel.weapon_chams.material=v end })
+vmcBox:AddSlider("vmc_w_r", { Text="Weapon R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.weapon_chams.color; VIS.viewmodel.weapon_chams.color=C3(v,c.G*255,c.B*255) end })
+vmcBox:AddSlider("vmc_w_g", { Text="Weapon G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.weapon_chams.color; VIS.viewmodel.weapon_chams.color=C3(c.R*255,v,c.B*255) end })
+vmcBox:AddSlider("vmc_w_b", { Text="Weapon B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.weapon_chams.color; VIS.viewmodel.weapon_chams.color=C3(c.R*255,c.G*255,v) end })
+vmcBox:AddSlider("vmc_w_t", { Text="Weapon Transparency", Min=0, Max=1, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.weapon_chams.transparency=v end })
+
+vmcBox:AddToggle("vmc_a_enable", { Text="Arm Chams", Default=false, Callback=function(v) VIS.viewmodel.arm_chams.enable=v end })
+vmcBox:AddDropdown("vmc_a_mat", { Text="Arm Material", Values={"Neon","ForceField","Glass","Ice","Plastic"}, Default="Neon", Callback=function(v) VIS.viewmodel.arm_chams.material=v end })
+vmcBox:AddSlider("vmc_a_r", { Text="Arm R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.arm_chams.color; VIS.viewmodel.arm_chams.color=C3(v,c.G*255,c.B*255) end })
+vmcBox:AddSlider("vmc_a_g", { Text="Arm G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.arm_chams.color; VIS.viewmodel.arm_chams.color=C3(c.R*255,v,c.B*255) end })
+vmcBox:AddSlider("vmc_a_b", { Text="Arm B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.arm_chams.color; VIS.viewmodel.arm_chams.color=C3(c.R*255,c.G*255,v) end })
+vmcBox:AddSlider("vmc_a_t", { Text="Arm Transparency", Min=0, Max=1, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.arm_chams.transparency=v end })
+vmcBox:AddToggle("vmc_a_inv", { Text="Invisible Arms", Default=false, Callback=function(v) VIS.viewmodel.arm_chams.invisible=v end })
+
+vmcBox:AddToggle("vmc_wh_enable", { Text="Weapon Highlight", Default=false, Callback=function(v) VIS.viewmodel.weapon_highlight.enable=v end })
+vmcBox:AddSlider("vmc_wh_t", { Text="WH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.weapon_highlight.transparency=v end })
+vmcBox:AddToggle("vmc_ah_enable", { Text="Arm Highlight", Default=false, Callback=function(v) VIS.viewmodel.arm_highlight.enable=v end })
+vmcBox:AddSlider("vmc_ah_t", { Text="AH Transparency", Min=0, Max=1, Default=0.5, Rounding=2, Callback=function(v) VIS.viewmodel.arm_highlight.transparency=v end })
+
+-- ============ VIEWMODEL OFFSETS ============
+local vmoBox = tabs.visual:AddRightGroupbox("Viewmodel Offsets")
+local vmOldOffsets = {}
+
+vmoBox:AddToggle("vmo_enable", { Text="Enabled", Default=false, Callback=function(v)
+    VIS.viewmodel.offsets.enable = v
+    if not v then
+        for i, off in pairs(vmOldOffsets) do
+            pcall(function()
+                local vm = LocalPlayer.PlayerScripts.Modules.UserInterface.ViewModels
+                if vm and vm[i] then vm[i].RootPartOffset = off end
+            end)
+        end
+        vmOldOffsets = {}
+    end
+end })
+vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.x=v end })
+vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
+vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
+
+-- ============ VIEWMODEL CUSTOM ============
+local vmcustBox = tabs.visual:AddRightGroupbox("Viewmodel Custom")
+vmcustBox:AddToggle("vmcust_enable", { Text="Enabled", Default=false, Callback=function(v) end })
+
+vmcustBox:AddToggle("vmcust_body_color", { Text="Body Color", Default=false, Callback=function(v) VIS.viewmodel.custom_body.color_enable=v end })
+vmcustBox:AddSlider("vmcust_body_r", { Text="Body R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_body.color; VIS.viewmodel.custom_body.color=C3(v,c.G*255,c.B*255) end })
+vmcustBox:AddSlider("vmcust_body_g", { Text="Body G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_body.color; VIS.viewmodel.custom_body.color=C3(c.R*255,v,c.B*255) end })
+vmcustBox:AddSlider("vmcust_body_b", { Text="Body B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_body.color; VIS.viewmodel.custom_body.color=C3(c.R*255,c.G*255,v) end })
+vmcustBox:AddToggle("vmcust_body_mat_en", { Text="Body Material", Default=false, Callback=function(v) VIS.viewmodel.custom_body.material_enable=v end })
+vmcustBox:AddDropdown("vmcust_body_mat", { Text="Material", Values={"ForceField","Neon","Plastic","SmoothPlastic","Wood","Marble","Slate"}, Default="ForceField", Callback=function(v) VIS.viewmodel.custom_body.material=v end })
+vmcustBox:AddToggle("vmcust_body_clothes", { Text="Disable Clothes", Default=false, Callback=function(v) VIS.viewmodel.custom_body.disable_clothes=v end })
+vmcustBox:AddSlider("vmcust_body_trans", { Text="Body Transparency", Min=0, Max=100, Default=0, Rounding=0, Callback=function(v) VIS.viewmodel.custom_body.transparency=v end })
+
+vmcustBox:AddToggle("vmcust_item_color", { Text="Item Color", Default=false, Callback=function(v) VIS.viewmodel.custom_item.color_enable=v end })
+vmcustBox:AddSlider("vmcust_item_r", { Text="Item R", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_item.color; VIS.viewmodel.custom_item.color=C3(v,c.G*255,c.B*255) end })
+vmcustBox:AddSlider("vmcust_item_g", { Text="Item G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_item.color; VIS.viewmodel.custom_item.color=C3(c.R*255,v,c.B*255) end })
+vmcustBox:AddSlider("vmcust_item_b", { Text="Item B", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) local c=VIS.viewmodel.custom_item.color; VIS.viewmodel.custom_item.color=C3(c.R*255,c.G*255,v) end })
+vmcustBox:AddToggle("vmcust_item_mat_en", { Text="Item Material", Default=false, Callback=function(v) VIS.viewmodel.custom_item.material_enable=v end })
+vmcustBox:AddDropdown("vmcust_item_mat", { Text="Item Material", Values={"ForceField","Neon","Plastic","SmoothPlastic","Wood","Marble","Slate"}, Default="ForceField", Callback=function(v) VIS.viewmodel.custom_item.material=v end })
+vmcustBox:AddSlider("vmcust_item_trans", { Text="Item Transparency", Min=0, Max=100, Default=0, Rounding=0, Callback=function(v) VIS.viewmodel.custom_item.transparency=v end })
+
+-- ============ SKYBOX ============
+local SkyboxPresets = {
+    ["None"] = {SkyboxBk="rbxassetid://14147881792",SkyboxDn="rbxassetid://14147882149",SkyboxFt="rbxassetid://14147882761",SkyboxLf="rbxassetid://14147883091",SkyboxRt="rbxassetid://14147882405",SkyboxUp="rbxassetid://14147881297"},
+    Aurora = {SkyboxBk="rbxassetid://116533337330584",SkyboxDn="rbxassetid://80054106187171",SkyboxFt="rbxassetid://94459139270943",SkyboxLf="rbxassetid://116368999680791",SkyboxRt="rbxassetid://125758104196312",SkyboxUp="rbxassetid://107060226443967"},
+    Battlerock = {SkyboxBk="rbxassetid://131136284306917",SkyboxDn="rbxassetid://89505977207531",SkyboxFt="rbxassetid://140099243548102",SkyboxLf="rbxassetid://121676169821100",SkyboxRt="rbxassetid://97183886241447",SkyboxUp="rbxassetid://107128620201556"},
+    ["Beach Bowl"] = {SkyboxBk="rbxassetid://81804134601271",SkyboxDn="rbxassetid://92395364196932",SkyboxFt="rbxassetid://81804134601271",SkyboxLf="rbxassetid://81804134601271",SkyboxRt="rbxassetid://81804134601271",SkyboxUp="rbxassetid://119089964803065"},
+    ["Buoy Base"] = {SkyboxBk="rbxassetid://135017685421888",SkyboxDn="rbxassetid://76610044495625",SkyboxFt="rbxassetid://89675413438577",SkyboxLf="rbxassetid://138307087837279",SkyboxRt="rbxassetid://136723547010707",SkyboxUp="rbxassetid://83404878914838"},
+    Clockwork = {SkyboxBk="rbxassetid://86284761193226",SkyboxDn="rbxassetid://111425663631622",SkyboxFt="rbxassetid://115606366886873",SkyboxLf="rbxassetid://127287488325060",SkyboxRt="rbxassetid://126844150113423",SkyboxUp="rbxassetid://74510789204352"},
+    ["Dark Matter"] = {SkyboxBk="rbxassetid://97629693450922",SkyboxDn="rbxassetid://97898396690232",SkyboxFt="rbxassetid://134755033418084",SkyboxLf="rbxassetid://118219143707956",SkyboxRt="rbxassetid://114940065588775",SkyboxUp="rbxassetid://95430908943263"},
+    ["Flash Black"] = {SkyboxBk="rbxassetid://78426835654353",SkyboxDn="rbxassetid://6213218651",SkyboxFt="rbxassetid://71970982976722",SkyboxLf="rbxassetid://78426835654353",SkyboxRt="rbxassetid://78426835654353",SkyboxUp="rbxassetid://138004866371717"},
+    Ghostly = {SkyboxBk="rbxassetid://111506743048183",SkyboxDn="rbxassetid://86198196348228",SkyboxFt="rbxassetid://86265514167302",SkyboxLf="rbxassetid://100257959405445",SkyboxRt="rbxassetid://71935101953120",SkyboxUp="rbxassetid://132011089223498"},
+    ["Good Egg"] = {SkyboxBk="rbxassetid://94681381933012",SkyboxDn="rbxassetid://75843838469806",SkyboxFt="rbxassetid://97891957473259",SkyboxLf="rbxassetid://102971518965494",SkyboxRt="rbxassetid://94588890960775",SkyboxUp="rbxassetid://127368871569815"},
+    ["Melty Molten"] = {SkyboxBk="rbxassetid://131463907527649",SkyboxDn="rbxassetid://116154164311420",SkyboxFt="rbxassetid://113077689016278",SkyboxLf="rbxassetid://79984367513909",SkyboxRt="rbxassetid://82395195737484",SkyboxUp="rbxassetid://117530106700350"},
+    Shiverburn = {SkyboxBk="rbxassetid://113636030839991",SkyboxDn="rbxassetid://118027268179499",SkyboxFt="rbxassetid://76405010847029",SkyboxLf="rbxassetid://112044353352688",SkyboxRt="rbxassetid://121078604572355",SkyboxUp="rbxassetid://132486295432727"},
+    ["Spin Dig"] = {SkyboxBk="rbxassetid://124211111366754",SkyboxDn="rbxassetid://120491795220431",SkyboxFt="rbxassetid://130119279111055",SkyboxLf="rbxassetid://70742671331562",SkyboxRt="rbxassetid://76516826791940",SkyboxUp="rbxassetid://100229310567751"},
+    ["Sweet Mystery"] = {SkyboxBk="rbxassetid://107264897520277",SkyboxDn="rbxassetid://135637946277638",SkyboxFt="rbxassetid://135705252786048",SkyboxLf="rbxassetid://119667604517747",SkyboxRt="rbxassetid://75904303027092",SkyboxUp="rbxassetid://97011146822716"},
+    ["Terrace Dome"] = {SkyboxBk="rbxassetid://98684100016510",SkyboxDn="rbxassetid://108354040356521",SkyboxFt="rbxassetid://95723629635852",SkyboxLf="rbxassetid://106269064939837",SkyboxRt="rbxassetid://136234415079744",SkyboxUp="rbxassetid://75385962780878"},
+}
+local SkyboxNames = {}
+for name in pairs(SkyboxPresets) do SkyboxNames[#SkyboxNames+1] = name end
+table.sort(SkyboxNames)
+
+local skyboxData = { enabled=false, selected="None", sky_obj=nil, original_sky=nil, auto_rotate=false, rotate_speed=10, star_count=3000, sun_size=20, moon_size=11 }
+local skyboxConn = nil
+
+local function EnsureSky()
+    if skyboxData.sky_obj and skyboxData.sky_obj.Parent then return skyboxData.sky_obj end
+    local original = Lighting:FindFirstChildOfClass("Sky")
+    if original and original.Name ~= "SecretSky" then
+        skyboxData.original_sky = original
+        original.Parent = nil
+    else skyboxData.original_sky = nil end
+    skyboxData.sky_obj = Instance.new("Sky")
+    skyboxData.sky_obj.Name = "SecretSky"
+    skyboxData.sky_obj.Parent = Lighting
+    return skyboxData.sky_obj
+end
+
+local function RestoreOriginalSky()
+    if skyboxData.sky_obj and skyboxData.sky_obj.Parent then skyboxData.sky_obj:Destroy() end
+    skyboxData.sky_obj = nil
+    if skyboxData.original_sky and skyboxData.original_sky.Parent == nil then skyboxData.original_sky.Parent = Lighting end
+    skyboxData.original_sky = nil
+end
+
+local function ApplySkybox()
+    if not skyboxData.enabled then return end
+    local sky = EnsureSky()
+    if not sky then return end
+    local tex = SkyboxPresets[skyboxData.selected] or SkyboxPresets["None"]
+    sky.SkyboxBk = tex.SkyboxBk; sky.SkyboxDn = tex.SkyboxDn
+    sky.SkyboxFt = tex.SkyboxFt; sky.SkyboxLf = tex.SkyboxLf
+    sky.SkyboxRt = tex.SkyboxRt; sky.SkyboxUp = tex.SkyboxUp
+    sky.SunAngularSize = skyboxData.sun_size
+    sky.MoonAngularSize = skyboxData.moon_size
+    sky.StarCount = skyboxData.star_count
+end
+
+local SkyboxSection = tabs.visual:AddRightGroupbox("Skybox")
+SkyboxSection:AddToggle("skybox_enabled", { Text="Enabled", Default=false, Callback=function(state)
+    skyboxData.enabled = state
+    if state then ApplySkybox()
+    else
+        if skyboxConn then skyboxConn:Disconnect(); skyboxConn = nil end
+        RestoreOriginalSky()
+    end
+end })
+SkyboxSection:AddDropdown("skybox_selected", { Text="Skybox", Values=SkyboxNames, Default="None", Callback=function(value) skyboxData.selected=value; ApplySkybox() end })
+SkyboxSection:AddSlider("skybox_stars", { Text="Stars", Min=0, Max=5000, Default=3000, Rounding=0, Callback=function(value) skyboxData.star_count=value; ApplySkybox() end })
+SkyboxSection:AddSlider("skybox_sun", { Text="Sun Size", Min=0, Max=50, Default=20, Rounding=0, Callback=function(value) skyboxData.sun_size=value; ApplySkybox() end })
+SkyboxSection:AddSlider("skybox_moon", { Text="Moon Size", Min=0, Max=30, Default=11, Rounding=0, Callback=function(value) skyboxData.moon_size=value; ApplySkybox() end })
+SkyboxSection:AddToggle("skybox_rotate", { Text="Auto Rotate", Default=false, Callback=function(state)
+    skyboxData.auto_rotate = state
+    if state then
+        if skyboxConn then skyboxConn:Disconnect() end
+        skyboxConn = RunService.RenderStepped:Connect(function(dt)
+            if not skyboxData.enabled or not skyboxData.auto_rotate then return end
+            local sky = skyboxData.sky_obj
+            if sky and sky.Parent then
+                sky.SkyboxOrientation = Vector3.new(0, (sky.SkyboxOrientation.Y + skyboxData.rotate_speed * dt) % 360, 0)
+            end
+        end)
+    else
+        if skyboxConn then skyboxConn:Disconnect(); skyboxConn = nil end
+    end
+end })
+SkyboxSection:AddSlider("skybox_rot_speed", { Text="Rotate Speed", Min=1, Max=100, Default=10, Rounding=0, Callback=function(value) skyboxData.rotate_speed=value end })
+
+task.defer(function()
+    task.wait(0.5)
+    fetchBg()
+    task.wait(0.1)
+    stripAlpha(getWin())
+    nukeBlue(Library.ScreenGui)
+end)
+
+Library:Notify("Secret loaded", 3)
+getgenv().Library = Library
