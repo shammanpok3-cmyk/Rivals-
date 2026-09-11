@@ -452,7 +452,13 @@ chBox:AddSlider("ch_r", { Text="R", Min=0, Max=255, Default=0, Rounding=0, Callb
 chBox:AddSlider("ch_g", { Text="G", Min=0, Max=255, Default=255, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,v,VIS.crosshair.color.B*255) end })
 chBox:AddSlider("ch_b", { Text="B", Min=0, Max=255, Default=170, Rounding=0, Callback=function(v) VIS.crosshair.color=C3(VIS.crosshair.color.R*255,VIS.crosshair.color.G*255,v) end })
 chBox:AddToggle("ch_text", { Text="Text", Default=false, Callback=function(v) VIS.crosshair.text_enable=v end })
-chBox:AddToggle("ch_text_use", { Text="Text: use 'elisium'", Default=true, Callback=function(v) VIS.crosshair.text_content = v and "elisium" or "" end })
+chBox:AddInput("ch_text_val", {
+    Text = "Text Value",
+    Default = "elisium",
+    Finished = true,
+    Numeric = false,
+    Callback = function(v) VIS.crosshair.text_content = v end,
+})
 chBox:AddSlider("ch_text_size", { Text="Text Size", Min=8, Max=48, Default=16, Rounding=0, Callback=function(v) VIS.crosshair.text_size=v end })
 chBox:AddSlider("ch_text_off", { Text="Text Offset", Min=0, Max=120, Default=18, Rounding=0, Callback=function(v) VIS.crosshair.text_offset=v end })
 chBox:AddToggle("ch_text_anim", { Text="Text Animation", Default=false, Callback=function(v) VIS.crosshair.text_animation=v end })
@@ -503,9 +509,6 @@ if client_viewmodel and client_viewmodel.Update then
                 c._sway_spring.Value = Vector2.new(0,0); c._sway_spring.Target = Vector2.new(0,0)
                 c._tilt_spring.Value = Vector2.new(0,0); c._tilt_spring.Target = Vector2.new(0,0)
             end
-            if s.equip and c._equip_spring then
-                c._equip_spring.Position = c._equip_spring.Target; c._equip_spring.Velocity = 0
-            end
             if s.inspect and c._inspect_spring then
                 c._inspect_spring.Position = c._inspect_spring.Target; c._inspect_spring.Velocity = 0
             end
@@ -531,16 +534,20 @@ if client_viewmodel and client_viewmodel.Update then
 end
 
 daBox:AddToggle("da_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.disable_anims.enable=v end })
-daBox:AddToggle("da_bobbing", { Text="Bobbing", Default=false, Callback=function(v) VIS.disable_anims.select.bobbing=v end })
-daBox:AddToggle("da_landing", { Text="Landing", Default=false, Callback=function(v) VIS.disable_anims.select.landing=v end })
-daBox:AddToggle("da_sway", { Text="Sway", Default=false, Callback=function(v) VIS.disable_anims.select.sway=v end })
-daBox:AddToggle("da_equip", { Text="Equip", Default=false, Callback=function(v) VIS.disable_anims.select.equip=v end })
-daBox:AddToggle("da_inspect", { Text="Inspect", Default=false, Callback=function(v) VIS.disable_anims.select.inspect=v end })
-daBox:AddToggle("da_sliding", { Text="Sliding", Default=false, Callback=function(v) VIS.disable_anims.select.sliding=v end })
-daBox:AddToggle("da_shoot", { Text="Shoot", Default=false, Callback=function(v) VIS.disable_anims.select.shoot=v end })
-daBox:AddToggle("da_impulse", { Text="Impulse", Default=false, Callback=function(v) VIS.disable_anims.select.impulse=v end })
-daBox:AddToggle("da_aim", { Text="Aim", Default=false, Callback=function(v) VIS.disable_anims.select.aim=v end })
-daBox:AddToggle("da_sprint", { Text="Sprint", Default=false, Callback=function(v) VIS.disable_anims.select.sprint=v end })
+daBox:AddInput("da_types", {
+    Text = "Types (comma)",
+    Default = "bobbing,landing,sway,inspect,sliding,shoot,impulse,aim,sprint",
+    Finished = true,
+    Numeric = false,
+    Callback = function(v)
+        local list = {}
+        for w in string.gmatch(v or "", "[^,%s]+") do
+            list[w] = true
+        end
+        VIS.disable_anims.select = list
+    end,
+})
+daBox:AddLabel("Types: bobbing, landing, sway, inspect, sliding, shoot, impulse, aim, sprint")
 
 -- ============ BULLET TRACERS ============
 local btBox = tabs.visual:AddRightGroupbox("Bullet Tracers")
@@ -919,7 +926,13 @@ end)
 
 hnBox:AddToggle("hn_enable", { Text="Enabled", Default=false, Callback=function(v) VIS.hit_notify.enable=v end })
 hnBox:AddSlider("hn_dur", { Text="Duration", Min=1, Max=5, Default=3, Rounding=1, Callback=function(v) VIS.hit_notify.duration=v end })
-hnBox:AddToggle("hn_use", { Text="Use default message", Default=true, Callback=function(v) VIS.hit_notify.msg = v and "Hit {target} for {damage}" or "Hit!" end })
+hnBox:AddInput("hn_msg", {
+    Text = "Message",
+    Default = "Hit {target} for {damage}",
+    Finished = true,
+    Numeric = false,
+    Callback = function(v) VIS.hit_notify.msg = v end,
+})
 hnBox:AddLabel("Formats: {target}, {damage}, {hitpart}")
 
 -- ============ VIEWMODEL CHAMS ============
@@ -1035,7 +1048,7 @@ vmoBox:AddSlider("vmo_x", { Text="X", Min=-5, Max=5, Default=0, Rounding=2, Call
 vmoBox:AddSlider("vmo_y", { Text="Y", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.y=v end })
 vmoBox:AddSlider("vmo_z", { Text="Z", Min=-5, Max=5, Default=0, Rounding=2, Callback=function(v) VIS.viewmodel.offsets.z=v end })
 
--- ============ VIEWMODEL CUSTOM (FIXED) ============
+-- ============ VIEWMODEL CUSTOM ============
 local vmcustBox = tabs.visual:AddRightGroupbox("Viewmodel Custom")
 local custTracked = {}
 
