@@ -1,0 +1,1800 @@
+--!nocheck
+--!nolint
+
+local function getExecutorFn(name)
+    local ok, fn
+    pcall(function() fn = getfenv(0)[name] end)
+    if type(fn) == "function" then return fn end
+    pcall(function() fn = getgenv()[name] end)
+    if type(fn) == "function" then return fn end
+    return nil
+end
+
+local _clonefunction = getExecutorFn("clonefunction")
+local _cloneref = getExecutorFn("cloneref")
+local _setthreadidentity = getExecutorFn("setthreadidentity")
+local _getthreadidentity = getExecutorFn("getthreadidentity") or getExecutorFn("getidentity")
+local _getcallingscript = getExecutorFn("getcallingscript")
+local _hookfunction = getExecutorFn("hookfunction")
+local _newcclosure = getExecutorFn("newcclosure")
+local _hookmetamethod = getExecutorFn("hookmetamethod")
+local _getrawmetatable = getExecutorFn("getrawmetatable")
+local _getconstants = getExecutorFn("getconstants") or debug.getconstants
+local _setconstant = getExecutorFn("setconstant") or debug.setconstant
+local _getgc = getExecutorFn("getgc")
+local _islclosure = getExecutorFn("islclosure")
+local _getfenv = getExecutorFn("getfenv") or getfenv
+
+local function clonefn(f)
+    if _clonefunction and f then
+        local ok, r = pcall(_clonefunction, f)
+        if ok and r then return r end
+    end
+    return f
+end
+
+local function cloneref(x)
+    if _cloneref and x then
+        local ok, r = pcall(_cloneref, x)
+        if ok and r then return r end
+    end
+    return x
+end
+
+local function setidentity(n)
+    if _setthreadidentity then pcall(_setthreadidentity, n) end
+end
+
+local function getidentity()
+    if _getthreadidentity then
+        local ok, v = pcall(_getthreadidentity)
+        if ok then return v end
+    end
+    return nil
+end
+
+local fireServer = clonefn(Instance.new("RemoteEvent").FireServer)
+local fireServer2 = clonefn(Instance.new("UnreliableRemoteEvent").FireServer)
+local firetouchinterest = getExecutorFn("firetouchinterest") or function() end
+local getconnections = getExecutorFn("getconnections") or function() return {} end
+
+local Services = setmetatable({}, {__index = function(t, name)
+    local s = cloneref(game:GetService(name))
+    rawset(t, name, s)
+    return s
+end})
+
+local Players = Services.Players
+local ReplicatedStorage = Services.ReplicatedStorage
+local RunService = Services.RunService
+local Workspace = Services.Workspace
+local UserInputService = Services.UserInputService
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local playerScripts = LocalPlayer:WaitForChild('PlayerScripts', 10)
+
+local function requirePath(root, path)
+    local current = root
+    for _, name in path do
+        local found = current:FindFirstChild(name)
+        assert(found, tostring(name) .. ' is missing under ' .. current:GetFullName())
+        current = found
+    end
+    return require(current)
+end
+
+local function getCamera()
+    return Workspace.CurrentCamera
+end
+
+local function optionValue(v)
+    if type(v) == "table" then return v[1] end
+    return v
+end
+
+if _hookfunction and _newcclosure and _getcallingscript then
+    pcall(function()
+        local Old1 = nil
+        Old1 = _hookfunction(setmetatable, _newcclosure(function(Table, MetaTable)
+            if type(MetaTable) == "table" and rawget(MetaTable, "__mode") == "kv" then
+                local Caller = _getcallingscript()
+                if Caller and Caller.Name == "MiscellaneousController" then
+                    return Old1(Table, {})
+                end
+            end
+            return Old1(Table, MetaTable)
+        end))
+    end)
+
+    pcall(function()
+        local Old2 = nil
+        Old2 = _hookfunction(rawlen, _newcclosure(function(Table)
+            if type(Table) == "table" then
+                local Caller = _getcallingscript()
+                if Caller and Caller.Name == "MiscellaneousController" then
+                    return 3
+                end
+            end
+            return Old2(Table)
+        end))
+    end)
+end
+
+task.spawn(function()
+    pcall(function()
+        local acWords = {"anticheat", "ac", "detection", "ban", "kick", "security", "moderation"}
+        local function disableScript(obj) obj.Disabled = true end
+        local function checkScript(obj)
+            if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+                local n = string.lower(obj.Name)
+                for _, ac in ipairs(acWords) do
+                    if string.find(n, ac, 1, true) then
+                        pcall(disableScript, obj)
+                        break
+                    end
+                end
+            end
+        end
+        local function blockScript(obj) pcall(checkScript, obj) end
+        pcall(function() game.DescendantAdded:Connect(blockScript) end)
+        pcall(function()
+            local descendants = game:GetDescendants()
+            for index = 1, #descendants do
+                blockScript(descendants[index])
+                if index % 4000 == 0 then task.wait() end
+            end
+        end)
+    end)
+
+    pcall(function()
+        local networkClient = Services.NetworkClient
+        if networkClient then
+            networkClient.ChildAdded:Connect(function(child)
+                pcall(function()
+                    local ok, n = pcall(function() return child.Name:lower() end)
+                    if ok and n then
+                        if n:find("anticheat") or n:find("detection") then
+                            pcall(function() child:Destroy() end)
+                        end
+                    end
+                end)
+            end)
+        end
+    end)
+end)
+
+pcall(function()
+    local fake = Instance.new("RemoteEvent")
+    fake.Name = "ClientAlert"
+    fake.Parent = LocalPlayer
+end)
+
+task.spawn(function()
+    pcall(function()
+        if type(_getgc) ~= "function" then return end
+        local rf = Services.ReplicatedFirst
+        local ls3 = rf:WaitForChild("LocalScript3", 10)
+        local gc = _getgc(false)
+        for index = 1, #gc do
+            local f = gc[index]
+            if type(f) == "function" and (type(_islclosure) ~= "function" or _islclosure(f)) then
+                local ok, e = pcall(_getfenv, f)
+                if ok and type(e) == "table" then
+                    local ok2, scr = pcall(function() return rawget(e, "script") end)
+                    if ok2 and scr and typeof(scr) == "Instance" then
+                        local ok3, scrStr = pcall(tostring, scr)
+                        if ok3 and (scr == ls3 or (type(scrStr) == "string" and scrStr:find("LoadingScreen"))) then
+                            local ok4, cs = pcall(_getconstants, f)
+                            if ok4 and type(cs) == "table" then
+                                for _, k in ipairs(cs) do
+                                    if type(k) == "string" and (k:find("TakeTheL") or k:find("ban") or k:find("kick")) then
+                                        pcall(function() _hookfunction(f, function() end) end)
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if index % 1500 == 0 then task.wait() end
+        end
+    end)
+end)
+
+local antidetect = true
+local detecteds = {
+    ["localscript3"] = true,
+    ["miscellaneouscontroller"] = true
+}
+local callerVerdicts = setmetatable({}, { __mode = "k" })
+local original
+pcall(function()
+    if not (_hookmetamethod and _newcclosure and _getcallingscript) then return end
+    original = _hookmetamethod(game, "__index", _newcclosure(function(self, key)
+        if antidetect and (key == "Name" or key == "Text") then
+            local caller = _getcallingscript()
+            if caller then
+                local blocked = callerVerdicts[caller]
+                if blocked == nil then
+                    local ok, result = pcall(function()
+                        return detecteds[string.lower(original(caller, "Name"))] == true
+                    end)
+                    blocked = ok and result or false
+                    callerVerdicts[caller] = blocked
+                end
+                if blocked then return "" end
+            end
+        end
+        return original(self, key)
+    end))
+end)
+
+local modules = ReplicatedStorage:WaitForChild("Modules")
+local utility = require(modules:WaitForChild("Utility"))
+local fighter_controller = require(LocalPlayer.PlayerScripts.Controllers.FighterController)
+local camera_controller = require(LocalPlayer.PlayerScripts.Controllers.CameraController)
+
+local cameraControllerIndex = getmetatable(camera_controller) and getmetatable(camera_controller).__index
+local setRotationFn = cameraControllerIndex and rawget(cameraControllerIndex, "SetRotation")
+
+local function getCameraRotation()
+    return rawget(camera_controller, "Rotation") or Vector2.zero
+end
+
+local function setCameraRotation(rot)
+    if setRotationFn then
+        coroutine.wrap(setRotationFn)(camera_controller, rot)
+    end
+end
+
+local function getLocalFighter()
+    local lf = rawget(fighter_controller, "LocalFighter")
+    if lf then return lf end
+    local map = rawget(fighter_controller, "_player_to_fighter")
+    if type(map) == "table" then
+        return map[LocalPlayer]
+    end
+    return nil
+end
+
+local CFrameCodec = {}
+function CFrameCodec.encode(cf)
+    local rx, ry, rz = cf:ToOrientation()
+    return {['\0'] = cf.X, ['\1'] = cf.Y, ['\2'] = cf.Z, ['\3'] = rx, ['\4'] = ry, ['\5'] = rz}
+end
+function CFrameCodec.decode(t)
+    if type(t) ~= 'table' then return nil end
+    local x, y, z = t['\0'], t['\1'], t['\2']
+    local rx, ry, rz = t['\3'], t['\4'], t['\5']
+    if type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number'
+        or type(rx) ~= 'number' or type(ry) ~= 'number' or type(rz) ~= 'number' then
+        return nil
+    end
+    return CFrame.new(x, y, z) * CFrame.fromOrientation(rx, ry, rz)
+end
+
+local FighterController = requirePath(playerScripts, {'Controllers', 'FighterController'})
+local EnemyController = requirePath(playerScripts, {'Controllers', 'EnemyController'})
+local SpectateController = requirePath(playerScripts, {'Controllers', 'SpectateController'})
+
+local VALID_CLASSES = { "Primary", "Secondary", "Melee", "Utility" }
+
+local function classFromIndex(idx)
+    if idx == 1 then return "Primary" end
+    if idx == 2 then return "Secondary" end
+    if idx == 3 then return "Melee" end
+    if idx == 4 then return "Utility" end
+    return nil
+end
+
+local function getLocalEquippedClass()
+    local fighter = getLocalFighter()
+    if not fighter then return nil end
+    local equipped = rawget(fighter, "EquippedItem")
+    if not equipped then return nil end
+    local info = rawget(equipped, "Info")
+    if info then
+        local cls = rawget(info, "Class")
+        if type(cls) == "string" then return cls end
+    end
+    return classFromIndex(rawget(equipped, "Index"))
+end
+
+local function classAllowed(activeSet, cls)
+    if activeSet == nil then return true end
+    local any = false
+    for _, name in ipairs(VALID_CLASSES) do
+        if activeSet[name] then any = true break end
+    end
+    if not any then return true end
+    if cls == nil then return false end
+    return activeSet[cls] == true
+end
+
+local function getEquippedWeaponName(plr, char)
+    local map = rawget(fighter_controller, "_player_to_fighter")
+    if type(map) == "table" then
+        local fighter = map[plr]
+        if fighter then
+            local equipped = rawget(fighter, "EquippedItem")
+            if equipped ~= nil then
+                local name = rawget(equipped, "Name")
+                if type(name) == "string" and name ~= "" then
+                    return name
+                end
+            end
+        end
+    end
+    if char then
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("Tool") then
+                return v.Name
+            end
+        end
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool then return tool.Name end
+    end
+    return nil
+end
+
+local function isEnemyModel(model)
+    if not model or not model.Parent then return false end
+    local plr = Players:GetPlayerFromCharacter(model)
+    if plr then
+        if plr == LocalPlayer then return false end
+        local myTeam = LocalPlayer:GetAttribute("TeamID")
+        local theirTeam = plr:GetAttribute("TeamID")
+        if myTeam == nil or theirTeam == nil or myTeam ~= theirTeam then
+            return true
+        end
+        return false
+    end
+    local envId = LocalPlayer:GetAttribute('EnvironmentID')
+    if model:GetAttribute('EnvironmentID') == envId then
+        return true
+    end
+    return false
+end
+
+local function findClosestEnemy(origin, maxRange)
+    local best, bestDist = nil, maxRange
+    local duel = rawget(SpectateController, 'CurrentDuelSubject')
+    if type(duel) == 'table' then
+        local duelers = rawget(duel, '_duelers_by_player')
+        if type(duelers) == 'table' then
+            for plr, dueler in duelers do
+                if plr ~= LocalPlayer then
+                    local character = plr.Character
+                    if character and isEnemyModel(character) then
+                        local humanoid = character:FindFirstChildOfClass('Humanoid')
+                        local root = character:FindFirstChild('HumanoidRootPart')
+                        if humanoid and humanoid.Health > 0 and root and root:IsA('BasePart') then
+                            local dist = (root.Position - origin).Magnitude
+                            if dist < bestDist then
+                                bestDist = dist
+                                best = root
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    local enemyMap = rawget(EnemyController, '_model_to_enemy')
+    if type(enemyMap) == 'table' then
+        for _, enemy in enemyMap do
+            if type(enemy) == 'table' then
+                local model = rawget(enemy, 'Model')
+                if isEnemyModel(model) then
+                    local humanoid = model:FindFirstChildOfClass('Humanoid')
+                    local root = model:FindFirstChild('HumanoidRootPart')
+                    if humanoid and humanoid.Health > 0 and root and root:IsA('BasePart') then
+                        local dist = (root.Position - origin).Magnitude
+                        if dist < bestDist then
+                            bestDist = dist
+                            best = root
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+local Config = {
+    SilentAim = {
+        Enabled = false, HitChance = 100, ClosestPart = false,
+        FOVRadius = 180, ShowFOV = false,
+        FOVColor = Color3.fromRGB(120, 81, 166),
+        FOVColor2 = Color3.fromRGB(255, 255, 255),
+        FOVThickness = 2, FOVTransparency = 0.2,
+        FOVFill = false,
+        FOVFillColor = Color3.fromRGB(120, 81, 166),
+        FOVFillColor2 = Color3.fromRGB(255, 255, 255),
+        FOVFillTransparency = 0.6,
+        FOVRotationSpeed = 90,
+        FOVFollowTarget = false, FOVFollowGunpoint = false, FOVGradient = true,
+        MaxDistance = 100, UseMaxDistance = true, Part = "Head", VisibleOnly = false,
+        AntiKatana = true, RiotShield = false, AutoShoot = false,
+        ActiveClasses = { Primary = true, Secondary = true, Melee = false, Utility = false },
+    },
+    Aimbot = {
+        Enabled = false, Smoothing = 1, ClosestPart = false,
+        FOVRadius = 180, ShowFOV = false,
+        FOVColor = Color3.fromRGB(120, 81, 166),
+        FOVColor2 = Color3.fromRGB(255, 255, 255),
+        FOVThickness = 2, FOVTransparency = 0.2,
+        FOVFill = false,
+        FOVFillColor = Color3.fromRGB(120, 81, 166),
+        FOVFillColor2 = Color3.fromRGB(255, 255, 255),
+        FOVFillTransparency = 0.6,
+        FOVRotationSpeed = 90,
+        FOVFollowTarget = false, FOVFollowGunpoint = false, FOVGradient = true,
+        MaxDistance = 100, UseMaxDistance = true, Part = "Head", VisibleOnly = false,
+        AntiKatana = true, RiotShield = false,
+        ActiveClasses = { Primary = true, Secondary = true, Melee = false, Utility = false },
+    },
+    Triggerbot = {
+        Enabled = false, TeamCheck = false, ReactionTime = 0.05, ShootDelay = 0.1,
+        MaxDistance = 100, UseMaxDistance = true,
+        AntiKatana = true, RiotShield = false,
+        ActiveClasses = { Primary = true, Secondary = true, Melee = false, Utility = false },
+    },
+    Melee = { Enabled = false, Range = 20 },
+    Weapons = { firerate = 100, meleeCooldown = 100 },
+    ESP = {
+        Enabled = false,
+        Box = true,
+        BoxColor = Color3.fromRGB(255, 255, 255),
+        Name = true,
+        NameColor = Color3.fromRGB(255, 255, 255),
+        Health = true,
+        HealthColor = Color3.fromRGB(0, 255, 0),
+        Distance = true,
+        DistanceColor = Color3.fromRGB(255, 255, 255),
+        Tracer = false,
+        TracerColor = Color3.fromRGB(255, 255, 255),
+        TracerOrigin = "Bottom",
+        TeamCheck = true,
+        HeldWeapon = true,
+        HeldWeaponColor = Color3.fromRGB(255, 255, 255),
+        HealthText = true,
+        HealthTextColor = Color3.fromRGB(255, 255, 255),
+    }
+}
+
+local deflecting = {}
+local function isDeflecting(plr) return deflecting[plr] == true end
+local function hasRiotShield(plr)
+    return Workspace.ViewModels:FindFirstChild(plr.Name .. " - Riot Shield - Riot Shield") ~= nil
+end
+local function checkWall(part)
+    local cam = getCamera()
+    if not cam then return false end
+    local ray = Ray.new(cam.CFrame.Position, part.Position - cam.CFrame.Position)
+    return not Workspace:FindPartOnRayWithIgnoreList(ray, { LocalPlayer.Character, part.Parent })
+end
+local function getClosestPart(plr)
+    local cam = getCamera()
+    if not cam then return nil end
+    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+    local closest, closestPart = math.huge, nil
+    if not plr.Character then return nil end
+    for _, v in next, plr.Character:GetChildren() do
+        if v:IsA("BasePart") then
+            local pos, onScreen = cam:WorldToViewportPoint(v.Position)
+            if onScreen then
+                local dist = (mousePos - Vector2.new(pos.X, pos.Y)).Magnitude
+                if dist <= closest then closest, closestPart = dist, v end
+            end
+        end
+    end
+    return closestPart
+end
+
+local SilentAimState = { Target = nil, Center = nil }
+local AimbotState    = { Target = nil }
+
+local function getTarget(fovRadius, cfg, featureState, excludeTarget)
+    local cam = getCamera()
+    if not cam then return nil end
+
+    if not classAllowed(cfg.ActiveClasses, getLocalEquippedClass()) then
+        return nil
+    end
+
+    local center
+    if featureState and featureState.Center then
+        center = featureState.Center
+    else
+        center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+    end
+
+    local target = nil
+    local closest = math.huge
+    local origin = cam.CFrame.Position
+    local useDist = cfg.UseMaxDistance
+    local maxDist = cfg.MaxDistance
+
+    for _, v in ipairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v ~= excludeTarget and v.Character then
+            local part = v.Character:FindFirstChild(cfg.Part)
+                or v.Character:FindFirstChild("HitboxHead")
+                or v.Character:FindFirstChild("Head")
+            local hum = v.Character:FindFirstChildOfClass("Humanoid")
+            if part and hum and hum.Health > 0 then
+                if cfg.AntiKatana and isDeflecting(v) then continue end
+                if v:GetAttribute('TeamID') == LocalPlayer:GetAttribute('TeamID') then continue end
+                if cfg.VisibleOnly and not checkWall(part) then continue end
+                if cfg.RiotShield and hasRiotShield(v) then continue end
+                if useDist and (part.Position - origin).Magnitude > maxDist then continue end
+                local pos, onScreen = cam:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
+                    if dist < closest and dist <= fovRadius then
+                        target, closest = v, dist
+                    end
+                end
+            end
+        end
+    end
+    return target
+end
+
+local function createFOVCircle()
+    local outline = Drawing.new("Circle")
+    outline.Thickness = 2
+    outline.NumSides = 64
+    outline.Filled = false
+    outline.Visible = false
+    local fill = Drawing.new("Circle")
+    fill.Thickness = 1
+    fill.NumSides = 64
+    fill.Filled = true
+    fill.Visible = false
+    local glow = Drawing.new("Circle")
+    glow.Thickness = 4
+    glow.NumSides = 64
+    glow.Filled = false
+    glow.Visible = false
+    return { outline = outline, fill = fill, glow = glow }
+end
+
+local SilentFOV = createFOVCircle()
+local AimbotFOV = createFOVCircle()
+
+local function GetMuzzlePos()
+    local cam = getCamera()
+    if not cam then return Vector2.new(0, 0) end
+    local firstPerson = Workspace:FindFirstChild("ViewModels") and Workspace.ViewModels:FindFirstChild("FirstPerson")
+    if firstPerson then
+        for _, p in next, firstPerson:GetDescendants() do
+            if p.Name == "_muzzle" and p:IsA("Attachment") then
+                local pos = cam:WorldToViewportPoint(p.WorldPosition)
+                return Vector2.new(pos.X, pos.Y)
+            end
+        end
+    end
+    return Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+end
+
+local function updateFOVVisual(state, cfg, followCenter)
+    local cam = getCamera()
+    if not cam then
+        state.outline.Visible = false
+        state.fill.Visible = false
+        state.glow.Visible = false
+        return
+    end
+
+    if not cfg.ShowFOV or not cfg.Enabled then
+        state.outline.Visible = false
+        state.fill.Visible = false
+        state.glow.Visible = false
+        return
+    end
+    local center
+    if cfg.FOVFollowGunpoint then
+        center = GetMuzzlePos()
+    elseif followCenter then
+        center = followCenter
+    else
+        center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+    end
+    local outlineColor = cfg.FOVColor
+    local fillColor = cfg.FOVFillColor
+    if cfg.FOVGradient then
+        local alpha = (math.sin(tick() * (cfg.FOVRotationSpeed / 60)) + 1) * 0.5
+        outlineColor = cfg.FOVColor:Lerp(cfg.FOVColor2, alpha)
+        fillColor = cfg.FOVFillColor:Lerp(cfg.FOVFillColor2, alpha)
+    end
+    state.outline.Position = center
+    state.outline.Radius = cfg.FOVRadius
+    state.outline.Color = outlineColor
+    state.outline.Thickness = cfg.FOVThickness
+    state.outline.Transparency = 1 - cfg.FOVTransparency
+    state.outline.Visible = true
+    if cfg.FOVFill then
+        state.fill.Position = center
+        state.fill.Radius = cfg.FOVRadius
+        state.fill.Color = fillColor
+        state.fill.Transparency = 1 - cfg.FOVFillTransparency
+        state.fill.Visible = true
+    else
+        state.fill.Visible = false
+    end
+    state.glow.Position = center
+    state.glow.Radius = cfg.FOVRadius + 2
+    state.glow.Color = outlineColor
+    state.glow.Thickness = cfg.FOVThickness + 2
+    state.glow.Transparency = (1 - cfg.FOVTransparency) * 0.4
+    state.glow.Visible = true
+end
+
+local ESPCache = {}
+
+local function CreateDrawings()
+    local tbl = {}
+    tbl.Box = Drawing.new("Square")
+    tbl.Box.Thickness = 1
+    tbl.Box.Filled = false
+    tbl.Box.Visible = false
+    tbl.Name = Drawing.new("Text")
+    tbl.Name.Size = 14
+    tbl.Name.Center = true
+    tbl.Name.Outline = true
+    tbl.Name.Visible = false
+    tbl.HealthBg = Drawing.new("Square")
+    tbl.HealthBg.Thickness = 1
+    tbl.HealthBg.Filled = true
+    tbl.HealthBg.Color = Color3.fromRGB(0, 0, 0)
+    tbl.HealthBg.Visible = false
+    tbl.Health = Drawing.new("Square")
+    tbl.Health.Thickness = 1
+    tbl.Health.Filled = true
+    tbl.Health.Visible = false
+    tbl.Distance = Drawing.new("Text")
+    tbl.Distance.Size = 12
+    tbl.Distance.Center = true
+    tbl.Distance.Outline = true
+    tbl.Distance.Visible = false
+    tbl.Tracer = Drawing.new("Line")
+    tbl.Tracer.Thickness = 1
+    tbl.Tracer.Visible = false
+    tbl.HeldWeapon = Drawing.new("Text")
+    tbl.HeldWeapon.Size = 12
+    tbl.HeldWeapon.Center = true
+    tbl.HeldWeapon.Outline = true
+    tbl.HeldWeapon.Visible = false
+    tbl.HealthText = Drawing.new("Text")
+    tbl.HealthText.Size = 12
+    tbl.HealthText.Center = true
+    tbl.HealthText.Outline = true
+    tbl.HealthText.Visible = false
+    return tbl
+end
+
+local function GetESP(plr)
+    if not ESPCache[plr] then
+        ESPCache[plr] = CreateDrawings()
+    end
+    return ESPCache[plr]
+end
+
+local function CleanESP(plr)
+    if ESPCache[plr] then
+        for _, obj in pairs(ESPCache[plr]) do
+            obj:Remove()
+        end
+        ESPCache[plr] = nil
+    end
+end
+
+local WasESPEnabled = nil
+
+RunService.RenderStepped:Connect(function()
+    updateFOVVisual(SilentFOV, Config.SilentAim, Config.SilentAim.FOVFollowTarget and SilentAimState.Center or nil)
+    updateFOVVisual(AimbotFOV, Config.Aimbot, nil)
+
+    local cam = getCamera()
+    if not cam then return end
+
+    local ESPEnabled = Config.ESP.Enabled
+
+    if WasESPEnabled == nil or WasESPEnabled ~= ESPEnabled then
+        WasESPEnabled = ESPEnabled
+        for plr in pairs(ESPCache) do
+            local esp = ESPCache[plr]
+            esp.Box.Visible = false
+            esp.Name.Visible = false
+            esp.HealthBg.Visible = false
+            esp.Health.Visible = false
+            esp.Distance.Visible = false
+            esp.Tracer.Visible = false
+            esp.HeldWeapon.Visible = false
+            esp.HealthText.Visible = false
+        end
+        if not ESPEnabled then
+            return
+        end
+    end
+
+    if not ESPEnabled then
+        return
+    end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
+        local esp = GetESP(plr)
+        local char = plr.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local head = char and char:FindFirstChild("Head")
+
+        if not (char and hum and hum.Health > 0 and hrp and head) then
+            esp.Box.Visible = false
+            esp.Name.Visible = false
+            esp.HealthBg.Visible = false
+            esp.Health.Visible = false
+            esp.Distance.Visible = false
+            esp.Tracer.Visible = false
+            esp.HeldWeapon.Visible = false
+            esp.HealthText.Visible = false
+            continue
+        end
+
+        if Config.ESP.TeamCheck and plr:GetAttribute('TeamID') == LocalPlayer:GetAttribute('TeamID') then
+            esp.Box.Visible = false
+            esp.Name.Visible = false
+            esp.HealthBg.Visible = false
+            esp.Health.Visible = false
+            esp.Distance.Visible = false
+            esp.Tracer.Visible = false
+            esp.HeldWeapon.Visible = false
+            esp.HealthText.Visible = false
+            continue
+        end
+
+        local hrpPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
+        if not onScreen then
+            esp.Box.Visible = false
+            esp.Name.Visible = false
+            esp.HealthBg.Visible = false
+            esp.Health.Visible = false
+            esp.Distance.Visible = false
+            esp.Tracer.Visible = false
+            esp.HeldWeapon.Visible = false
+            esp.HealthText.Visible = false
+            continue
+        end
+
+        local headPos = cam:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+        local legPos = cam:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+        local height = math.abs(headPos.Y - legPos.Y)
+        local width = height / 2
+        local x = hrpPos.X - width / 2
+        local y = headPos.Y
+
+        if Config.ESP.Box then
+            esp.Box.Size = Vector2.new(width, height)
+            esp.Box.Position = Vector2.new(x, y)
+            esp.Box.Color = Config.ESP.BoxColor
+            esp.Box.Visible = true
+        else
+            esp.Box.Visible = false
+        end
+
+        if Config.ESP.Name then
+            esp.Name.Text = plr.Name
+            esp.Name.Position = Vector2.new(hrpPos.X, y - 16)
+            esp.Name.Color = Config.ESP.NameColor
+            esp.Name.Visible = true
+        else
+            esp.Name.Visible = false
+        end
+
+        if Config.ESP.Health then
+            local hp = hum.Health / hum.MaxHealth
+            esp.HealthBg.Size = Vector2.new(2, height)
+            esp.HealthBg.Position = Vector2.new(x - 6, y)
+            esp.HealthBg.Visible = true
+            esp.Health.Size = Vector2.new(2, height * hp)
+            esp.Health.Position = Vector2.new(x - 6, y + height - height * hp)
+            esp.Health.Color = Color3.fromRGB(255 * (1 - hp), 255 * hp, 0)
+            esp.Health.Visible = true
+        else
+            esp.HealthBg.Visible = false
+            esp.Health.Visible = false
+        end
+
+        if Config.ESP.Distance then
+            local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local dist = myHrp and math.floor((myHrp.Position - hrp.Position).Magnitude) or 0
+            esp.Distance.Text = tostring(dist) .. "m"
+            esp.Distance.Position = Vector2.new(hrpPos.X, y + height + 2)
+            esp.Distance.Color = Config.ESP.DistanceColor
+            esp.Distance.Visible = true
+        else
+            esp.Distance.Visible = false
+        end
+
+        if Config.ESP.Tracer then
+            local startX = cam.ViewportSize.X / 2
+            local startY = cam.ViewportSize.Y
+            if Config.ESP.TracerOrigin == "Center" then
+                startY = cam.ViewportSize.Y / 2
+            elseif Config.ESP.TracerOrigin == "Top" then
+                startY = 0
+            end
+            esp.Tracer.From = Vector2.new(startX, startY)
+            esp.Tracer.To = Vector2.new(hrpPos.X, hrpPos.Y)
+            esp.Tracer.Color = Config.ESP.TracerColor
+            esp.Tracer.Visible = true
+        else
+            esp.Tracer.Visible = false
+        end
+
+        if Config.ESP.HealthText then
+            local hp = math.max(0, math.floor(hum.Health + 0.5))
+            local maxHp = math.floor(hum.MaxHealth + 0.5)
+            esp.HealthText.Text = string.format("%d / %d", hp, maxHp)
+            local textY = (Config.ESP.Name) and (y - 30) or (y - 2)
+            esp.HealthText.Position = Vector2.new(hrpPos.X, textY)
+            esp.HealthText.Color = Config.ESP.HealthTextColor
+            esp.HealthText.Visible = true
+        else
+            esp.HealthText.Visible = false
+        end
+
+        if Config.ESP.HeldWeapon then
+            local weaponName = getEquippedWeaponName(plr, char)
+            if weaponName then
+                esp.HeldWeapon.Text = weaponName
+                local wpnY = y + height + (Config.ESP.Distance and 16 or 2)
+                esp.HeldWeapon.Position = Vector2.new(hrpPos.X, wpnY)
+                esp.HeldWeapon.Color = Config.ESP.HeldWeaponColor
+                esp.HeldWeapon.Visible = true
+            else
+                esp.HeldWeapon.Visible = false
+            end
+        else
+            esp.HeldWeapon.Visible = false
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(CleanESP)
+
+pcall(function()
+    local katana = require(LocalPlayer.PlayerScripts.Modules.Items.Katana)
+    local old = katana._StartDeflecting
+    katana._StartDeflecting = function(...)
+        local args = { ... }
+        local fighter = args[1].ClientFighter
+        local player = fighter and fighter.Player
+        if player then
+            deflecting[player] = true
+            task.delay(args[1].Info.DeflectDuration or 0.1, function() deflecting[player] = false end)
+        end
+        return old(table.unpack(args))
+    end
+end)
+
+local old_raycast = utility.Raycast
+utility.Raycast = function(...)
+    if Config.SilentAim.Enabled and debug.info(3, "n") == "StartShooting" then
+        if math.random(1, 100) <= Config.SilentAim.HitChance then
+            local closest = SilentAimState.Target
+                or getTarget(Config.SilentAim.FOVRadius, Config.SilentAim, SilentAimState)
+            if closest and closest.Character then
+                local target_pos
+                if Config.SilentAim.ClosestPart then
+                    local part = getClosestPart(closest)
+                    target_pos = part and part.Position
+                else
+                    local aimPart = closest.Character:FindFirstChild(Config.SilentAim.Part)
+                        or closest.Character:FindFirstChild("HitboxHead")
+                        or closest.Character:FindFirstChild("Head")
+                    target_pos = aimPart and aimPart.Position
+                end
+                if target_pos then
+                    local args = { ... }
+                    args[3] = target_pos
+                    return old_raycast(table.unpack(args))
+                end
+            end
+        end
+    end
+    return old_raycast(...)
+end
+
+RunService.Heartbeat:Connect(function()
+    SilentAimState.Target = nil
+    SilentAimState.Center = nil
+    local cam = getCamera()
+    if cam and Config.SilentAim.Enabled then
+        local sa = Config.SilentAim
+        if sa.FOVFollowTarget then
+            local prev = SilentAimState.Target
+            if prev and prev.Character then
+                local part = prev.Character:FindFirstChild(sa.Part)
+                    or prev.Character:FindFirstChild("HitboxHead")
+                    or prev.Character:FindFirstChild("Head")
+                if part then
+                    local sp, on = cam:WorldToViewportPoint(part.Position)
+                    if on then
+                        SilentAimState.Center = Vector2.new(sp.X, sp.Y)
+                    end
+                end
+            end
+        end
+        SilentAimState.Target = getTarget(sa.FOVRadius, sa, SilentAimState)
+    end
+
+    if not Config.Aimbot.Enabled then return end
+    if not cam then return end
+    local ab = Config.Aimbot
+    local closest = getTarget(ab.FOVRadius, ab, nil, SilentAimState.Target)
+    AimbotState.Target = closest
+    if not closest or not closest.Character then return end
+    local targetPart = closest.Character:FindFirstChild(ab.Part)
+        or closest.Character:FindFirstChild("HitboxHead")
+        or closest.Character:FindFirstChild("Head")
+    if not targetPart then return end
+
+    local delta = targetPart.Position - cam.CFrame.Position
+    if delta.Magnitude < 0.1 then return end
+    local wantedYaw = math.atan2(-delta.X, -delta.Z)
+    local wantedPitch = math.asin(math.clamp(delta.Unit.Y, -1, 1))
+
+    local cur = getCameraRotation()
+    local smooth = math.clamp(ab.Smoothing, 0.01, 1)
+    setCameraRotation(Vector2.new(
+        cur.X + (wantedPitch - cur.X) * smooth,
+        cur.Y + (wantedYaw - cur.Y) * smooth
+    ))
+end)
+
+local function triggerRay()
+    local cam = getCamera()
+    if not cam then return nil end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = { LocalPlayer.Character }
+    params.IgnoreWater = true
+    local rayLen = (Config.Triggerbot.UseMaxDistance and Config.Triggerbot.MaxDistance) or 2500
+    local result = Workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * rayLen, params)
+    if not result then return nil end
+    local model = result.Instance:FindFirstAncestorOfClass("Model")
+    if not model then return nil end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return nil end
+    local plr = Players:GetPlayerFromCharacter(model)
+    if not plr then return nil end
+    return plr
+end
+
+local triggerShooting = false
+task.spawn(function()
+    while task.wait(0.05) do
+        if not Config.Triggerbot.Enabled then triggerShooting = false continue end
+        if not classAllowed(Config.Triggerbot.ActiveClasses, getLocalEquippedClass()) then
+            triggerShooting = false
+            continue
+        end
+        local plr = triggerRay()
+        if plr and plr ~= LocalPlayer then
+            local tb = Config.Triggerbot
+            local reject = false
+            if tb.TeamCheck and plr:GetAttribute('TeamID') == LocalPlayer:GetAttribute('TeamID') then
+                reject = true
+            end
+            if not reject and tb.AntiKatana and isDeflecting(plr) then
+                reject = true
+            end
+            if not reject and tb.RiotShield and hasRiotShield(plr) then
+                reject = true
+            end
+            if reject then
+                triggerShooting = false
+            else
+                if not triggerShooting then
+                    task.wait(tb.ReactionTime)
+                    triggerShooting = true
+                end
+                local fighter = getLocalFighter()
+                if fighter then
+                    setidentity(2)
+                    fighter:Input('StartShooting')
+                    setidentity(7)
+                    task.wait(tb.ShootDelay)
+                end
+            end
+        else
+            triggerShooting = false
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if not Config.SilentAim.AutoShoot then return end
+    local target = SilentAimState.Target
+    if target and target.Character then
+        local fighter = getLocalFighter()
+        if fighter then
+            setidentity(2)
+            fighter:Input("StartShooting")
+            setidentity(7)
+        end
+    end
+end)
+
+local MeleeModule = requirePath(playerScripts, {'Modules', 'ItemTypes', 'Melee'})
+local KnifeModule = requirePath(playerScripts, {'Modules', 'Items', 'Knife'})
+
+local originalShoot = rawget(MeleeModule, 'StartShooting')
+if type(originalShoot) == 'function' then
+    rawset(MeleeModule, 'StartShooting', function(self, ...)
+        local results = table.pack(originalShoot(self, ...))
+        if Config.Melee.Enabled and results[1] == true and results[3] and type(results[3]) == 'table' then
+            if self.ClientFighter and self.ClientFighter.IsLocalPlayer then
+                local cameraData = results[3]
+                local aim = CFrameCodec.decode(cameraData['\0'])
+                if aim then
+                    local target = findClosestEnemy(aim.Position, Config.Melee.Range)
+                    if target then
+                        local encoded = CFrameCodec.encode(CFrame.new(target.Position) * CFrame.fromOrientation(-math.pi / 2, 0, 0))
+                        cameraData['\0'] = encoded
+                        cameraData['\1'] = encoded
+                    end
+                end
+            end
+        end
+        return table.unpack(results, 1, results.n)
+    end)
+end
+
+local originalAim = rawget(KnifeModule, 'StartAiming')
+if type(originalAim) == 'function' then
+    rawset(KnifeModule, 'StartAiming', function(self, secondary, ...)
+        local results = table.pack(originalAim(self, secondary, ...))
+        if Config.Melee.Enabled and results[1] == true and results[3] and type(results[3]) == 'table' then
+            if self.ClientFighter and self.ClientFighter.IsLocalPlayer then
+                local cameraData = results[3]
+                local aim = CFrameCodec.decode(cameraData['\0'])
+                if aim then
+                    local target = findClosestEnemy(aim.Position, Config.Melee.Range)
+                    if target then
+                        local encoded = CFrameCodec.encode(CFrame.new(target.Position) * CFrame.fromOrientation(-math.pi / 2, 0, 0))
+                        cameraData['\0'] = encoded
+                        cameraData['\1'] = encoded
+                    end
+                end
+            end
+        end
+        return table.unpack(results, 1, results.n)
+    end)
+end
+
+local GunModule = requirePath(playerScripts, {'Modules', 'ItemTypes', 'Gun'})
+local ViewModelClass = requirePath(playerScripts, {'Modules', 'ClientReplicatedClasses', 'ClientFighter', 'ClientItem', 'ClientViewModel'})
+
+local PLAY_HOOK = '\0)|b_TSODb35'
+local originalPlayAnimation = rawget(ViewModelClass, 'PlayAnimation')
+
+if type(originalPlayAnimation) == 'function' then
+    rawset(ViewModelClass, PLAY_HOOK, function(viewModel, name, amount, ...)
+        local item = viewModel.ClientItem
+        if item and item.ClientFighter and item.ClientFighter.IsLocalPlayer then
+            item._shoot_cooldown = item._shoot_cooldown - amount * (1 - Config.Weapons.firerate / 100)
+        end
+        return originalPlayAnimation(viewModel, name, ...)
+    end)
+
+    local startShootingFunc = rawget(GunModule, 'StartShooting')
+    if type(startShootingFunc) == 'function' then
+        for k, v in _getconstants(startShootingFunc) do
+            if v == 'PlayAnimation' then
+                _setconstant(startShootingFunc, k, PLAY_HOOK)
+            end
+        end
+    end
+end
+
+local currentShootHook = rawget(MeleeModule, 'StartShooting')
+rawset(MeleeModule, 'StartShooting', function(self, ...)
+    local results = table.pack(currentShootHook(self, ...))
+    local kept = Config.Weapons.meleeCooldown / 100
+    if results[1] == true and kept < 1 and self.ClientFighter and self.ClientFighter.IsLocalPlayer then
+        local started = self._last_attack
+        if started then
+            self._attack_cooldown = started + (self._attack_cooldown - started) * kept
+        end
+    end
+    return table.unpack(results, 1, results.n)
+end)
+
+local undergroundActive = false
+local DESYNC_MEMBERS = {}
+local ROOT_TIMEOUT = 10
+local DEPTH = 5
+local character = nil
+local root = nil
+local realCFrame = nil
+local lastHeartbeat = tick()
+
+local indexMetatable = nil
+if _getrawmetatable then
+    local ok, mt = pcall(_getrawmetatable, game)
+    if ok and mt and mt.__index then indexMetatable = mt.__index end
+end
+
+local function track(model)
+    character, root, realCFrame = model, nil, nil
+    local part = model:WaitForChild('HumanoidRootPart', ROOT_TIMEOUT)
+    if character == model and part and part:IsA('BasePart') then
+        root = part
+        realCFrame = nil
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(track)
+LocalPlayer.CharacterRemoving:Connect(function(model)
+    if model == character then
+        character, root, realCFrame = nil, nil, nil
+    end
+end)
+
+if LocalPlayer.Character then
+    task.spawn(track, LocalPlayer.Character)
+end
+
+if indexMetatable then
+    RunService:BindToRenderStep('AntiAim.DesyncRestore', Enum.RenderPriority.Camera.Value - 1, function()
+        local part, cframe = root, realCFrame
+        if part and cframe then
+            part.CFrame = cframe
+        end
+    end)
+
+    RunService.Heartbeat:Connect(function(deltaTime)
+        local now = tick()
+        if now - lastHeartbeat > 0.5 then
+            realCFrame = nil
+            if root then
+                root.AssemblyLinearVelocity = Vector3.zero
+            end
+        end
+        lastHeartbeat = now
+
+        local part = root
+        if not part then
+            realCFrame = nil
+            return
+        end
+        local cframe = indexMetatable(part, 'CFrame')
+        realCFrame = cframe
+        for _, member in DESYNC_MEMBERS do
+            local ok, server = pcall(member.propose, cframe, part, deltaTime)
+            if not ok then
+                part.CFrame = cframe
+            elseif server then
+                part.CFrame = server
+                return
+            else
+                cframe = indexMetatable(part, 'CFrame')
+                realCFrame = cframe
+            end
+        end
+        realCFrame = nil
+    end)
+end
+
+local undergroundDeps = {
+    floor = function(from, character)
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = character and {character} or {}
+        local hit = Workspace:Raycast(from, Vector3.new(0, -500, 0), params)
+        return hit and hit.Position.Y or nil
+    end
+}
+
+local drop = Vector3.new(0, DEPTH, 0)
+local flat = CFrame.Angles(math.rad(90), 0, 0)
+
+table.insert(DESYNC_MEMBERS, {
+    order = 2,
+    propose = function(real, part, deltaTime)
+        if not undergroundActive then return nil end
+        local position = real.Position
+        local floor = undergroundDeps.floor(position, part.Parent)
+        local hidden = floor and Vector3.new(position.X, floor - DEPTH, position.Z) or (position - drop)
+        return CFrame.new(hidden) * flat
+    end
+})
+table.sort(DESYNC_MEMBERS, function(a, b) return a.order < b.order end)
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/gen2'))()
+
+local Window = Rayfield:CreateWindow({
+    name = "Aimbot & Combat Suite",
+    subtitle = "Combined",
+    sidebarLayout = true,
+    theme = "cobalt",
+})
+
+local SilentTab = Window:CreateTab({ name = "Silent Aim", icon = 93364949241311 })
+local AimbotTab = Window:CreateTab({ name = "Aimbot", icon = 93364949241311 })
+local TriggerTab = Window:CreateTab({ name = "Triggerbot", icon = 93364949241311 })
+local VisualTab = Window:CreateTab({ name = "Visuals", icon = 93364949241311 })
+local CombatTab = Window:CreateTab({ name = "Melee & Combat", icon = "sword" })
+
+SilentTab:CreateToggle({
+    name = "Enable Silent Aim",
+    flag = "SilentAimEnabled",
+    callback = function(v) Config.SilentAim.Enabled = v end,
+})
+
+SilentTab:CreateSlider({
+    name = "Hit Chance", range = { 1, 100 }, increment = 1, suffix = "%",
+    value = 100, flag = "SilentHitChance",
+    callback = function(v) Config.SilentAim.HitChance = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Closest Part", flag = "SilentClosestPart",
+    callback = function(v) Config.SilentAim.ClosestPart = v end,
+})
+
+SilentTab:CreateSlider({
+    name = "FOV Radius", range = { 1, 600 }, increment = 1, suffix = "px",
+    value = 180, flag = "SilentFOVRadius",
+    callback = function(v) Config.SilentAim.FOVRadius = v end,
+})
+
+SilentTab:CreateSection({ name = "FOV Visual" })
+
+SilentTab:CreateToggle({
+    name = "Show FOV", flag = "SilentShowFOV",
+    callback = function(v) Config.SilentAim.ShowFOV = v end,
+})
+
+SilentTab:CreateColorPicker({
+    name = "FOV Color", color = Config.SilentAim.FOVColor, flag = "SilentFOVColor",
+    callback = function(c) Config.SilentAim.FOVColor = c end,
+})
+
+SilentTab:CreateColorPicker({
+    name = "FOV Color 2", color = Config.SilentAim.FOVColor2, flag = "SilentFOVColor2",
+    callback = function(c) Config.SilentAim.FOVColor2 = c end,
+})
+
+SilentTab:CreateToggle({
+    name = "Gradient", flag = "SilentFOVGradient",
+    callback = function(v) Config.SilentAim.FOVGradient = v end,
+})
+
+SilentTab:CreateSlider({
+    name = "FOV Thickness", range = { 1, 10 }, increment = 1,
+    value = 2, flag = "SilentFOVThickness",
+    callback = function(v) Config.SilentAim.FOVThickness = v end,
+})
+
+SilentTab:CreateSlider({
+    name = "FOV Transparency", range = { 0, 1 }, increment = 0.01,
+    value = 0.2, flag = "SilentFOVTransparency",
+    callback = function(v) Config.SilentAim.FOVTransparency = v end,
+})
+
+SilentTab:CreateSlider({
+    name = "Gradient Speed", range = { 0, 360 }, increment = 1,
+    value = 90, flag = "SilentFOVRotSpeed",
+    callback = function(v) Config.SilentAim.FOVRotationSpeed = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Fill", flag = "SilentFOVFill",
+    callback = function(v) Config.SilentAim.FOVFill = v end,
+})
+
+SilentTab:CreateColorPicker({
+    name = "Fill Color", color = Config.SilentAim.FOVFillColor, flag = "SilentFOVFillColor",
+    callback = function(c) Config.SilentAim.FOVFillColor = c end,
+})
+
+SilentTab:CreateColorPicker({
+    name = "Fill Color 2", color = Config.SilentAim.FOVFillColor2, flag = "SilentFOVFillColor2",
+    callback = function(c) Config.SilentAim.FOVFillColor2 = c end,
+})
+
+SilentTab:CreateSlider({
+    name = "Fill Transparency", range = { 0, 1 }, increment = 0.01,
+    value = 0.6, flag = "SilentFOVFillTransparency",
+    callback = function(v) Config.SilentAim.FOVFillTransparency = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Follow Target", flag = "SilentFOVFollowTarget",
+    callback = function(v) Config.SilentAim.FOVFollowTarget = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Follow Gunpoint", flag = "SilentFOVFollowGunpoint",
+    callback = function(v) Config.SilentAim.FOVFollowGunpoint = v end,
+})
+
+SilentTab:CreateSection({ name = "Targeting" })
+
+SilentTab:CreateToggle({
+    name = "Active on Primary",
+    value = true,
+    flag = "SilentClassPrimary",
+    callback = function(v) Config.SilentAim.ActiveClasses.Primary = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Active on Secondary",
+    value = true,
+    flag = "SilentClassSecondary",
+    callback = function(v) Config.SilentAim.ActiveClasses.Secondary = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Active on Melee",
+    value = false,
+    flag = "SilentClassMelee",
+    callback = function(v) Config.SilentAim.ActiveClasses.Melee = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Active on Utility",
+    value = false,
+    flag = "SilentClassUtility",
+    callback = function(v) Config.SilentAim.ActiveClasses.Utility = v end,
+})
+
+SilentTab:CreateDropdown({
+    name = "Hit Part",
+    options = { "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso" },
+    currentOption = { "Head" }, multipleOptions = false, flag = "SilentTargetingHitPart",
+    callback = function(v)
+        local val = optionValue(v)
+        if type(val) == "string" then
+            Config.SilentAim.Part = val
+        end
+    end,
+})
+
+SilentTab:CreateSlider({
+    name = "Max Distance", range = { 100, 700 }, increment = 1, suffix = "studs",
+    value = 100, flag = "SilentTargetingMaxDist",
+    callback = function(v) Config.SilentAim.MaxDistance = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Limit Target Distance",
+    flag = "SilentTargetingUseMaxDist",
+    callback = function(v) Config.SilentAim.UseMaxDistance = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Visible Only", flag = "SilentTargetingVisibleOnly",
+    callback = function(v) Config.SilentAim.VisibleOnly = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Anti Katana", flag = "SilentTargetingAntiKatana",
+    callback = function(v) Config.SilentAim.AntiKatana = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Anti Riot Shield", flag = "SilentTargetingAntiRiot",
+    callback = function(v) Config.SilentAim.RiotShield = v end,
+})
+
+SilentTab:CreateToggle({
+    name = "Auto Shoot", flag = "SilentTargetingAutoShoot",
+    callback = function(v) Config.SilentAim.AutoShoot = v end,
+})
+
+
+AimbotTab:CreateToggle({
+    name = "Enable Aimbot", flag = "AimbotEnabled",
+    callback = function(v) Config.Aimbot.Enabled = v end,
+})
+
+AimbotTab:CreateSlider({
+    name = "Smoothing", range = { 0, 1 }, increment = 0.01,
+    value = 1, flag = "AimbotSmoothing",
+    callback = function(v) Config.Aimbot.Smoothing = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Closest Part", flag = "AimbotClosestPart",
+    callback = function(v) Config.Aimbot.ClosestPart = v end,
+})
+
+AimbotTab:CreateSlider({
+    name = "FOV Radius", range = { 1, 600 }, increment = 1, suffix = "px",
+    value = 180, flag = "AimbotFOVRadius",
+    callback = function(v) Config.Aimbot.FOVRadius = v end,
+})
+
+AimbotTab:CreateSection({ name = "FOV Visual" })
+
+AimbotTab:CreateToggle({
+    name = "Show FOV", flag = "AimbotShowFOV",
+    callback = function(v) Config.Aimbot.ShowFOV = v end,
+})
+
+AimbotTab:CreateColorPicker({
+    name = "FOV Color", color = Config.Aimbot.FOVColor, flag = "AimbotFOVColor",
+    callback = function(c) Config.Aimbot.FOVColor = c end,
+})
+
+AimbotTab:CreateColorPicker({
+    name = "FOV Color 2", color = Config.Aimbot.FOVColor2, flag = "AimbotFOVColor2",
+    callback = function(c) Config.Aimbot.FOVColor2 = c end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Gradient", flag = "AimbotFOVGradient",
+    callback = function(v) Config.Aimbot.FOVGradient = v end,
+})
+
+AimbotTab:CreateSlider({
+    name = "FOV Thickness", range = { 1, 10 }, increment = 1,
+    value = 2, flag = "AimbotFOVThickness",
+    callback = function(v) Config.Aimbot.FOVThickness = v end,
+})
+
+AimbotTab:CreateSlider({
+    name = "FOV Transparency", range = { 0, 1 }, increment = 0.01,
+    value = 0.2, flag = "AimbotFOVTransparency",
+    callback = function(v) Config.Aimbot.FOVTransparency = v end,
+})
+
+AimbotTab:CreateSlider({
+    name = "Gradient Speed", range = { 0, 360 }, increment = 1,
+    value = 90, flag = "AimbotFOVRotSpeed",
+    callback = function(v) Config.Aimbot.FOVRotationSpeed = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Fill", flag = "AimbotFOVFill",
+    callback = function(v) Config.Aimbot.FOVFill = v end,
+})
+
+AimbotTab:CreateColorPicker({
+    name = "Fill Color", color = Config.Aimbot.FOVFillColor, flag = "AimbotFOVFillColor",
+    callback = function(c) Config.Aimbot.FOVFillColor = c end,
+})
+
+AimbotTab:CreateColorPicker({
+    name = "Fill Color 2", color = Config.Aimbot.FOVFillColor2, flag = "AimbotFOVFillColor2",
+    callback = function(c) Config.Aimbot.FOVFillColor2 = c end,
+})
+
+AimbotTab:CreateSlider({
+    name = "Fill Transparency", range = { 0, 1 }, increment = 0.01,
+    value = 0.6, flag = "AimbotFOVFillTransparency",
+    callback = function(v) Config.Aimbot.FOVFillTransparency = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Follow Target", flag = "AimbotFOVFollowTarget",
+    callback = function(v) Config.Aimbot.FOVFollowTarget = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Follow Gunpoint", flag = "AimbotFOVFollowGunpoint",
+    callback = function(v) Config.Aimbot.FOVFollowGunpoint = v end,
+})
+
+AimbotTab:CreateSection({ name = "Targeting" })
+
+AimbotTab:CreateToggle({
+    name = "Active on Primary",
+    value = true,
+    flag = "AimbotClassPrimary",
+    callback = function(v) Config.Aimbot.ActiveClasses.Primary = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Active on Secondary",
+    value = true,
+    flag = "AimbotClassSecondary",
+    callback = function(v) Config.Aimbot.ActiveClasses.Secondary = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Active on Melee",
+    value = false,
+    flag = "AimbotClassMelee",
+    callback = function(v) Config.Aimbot.ActiveClasses.Melee = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Active on Utility",
+    value = false,
+    flag = "AimbotClassUtility",
+    callback = function(v) Config.Aimbot.ActiveClasses.Utility = v end,
+})
+
+AimbotTab:CreateDropdown({
+    name = "Hit Part",
+    options = { "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso" },
+    currentOption = { "Head" }, multipleOptions = false, flag = "AimbotTargetingHitPart",
+    callback = function(v)
+        local val = optionValue(v)
+        if type(val) == "string" then
+            Config.Aimbot.Part = val
+        end
+    end,
+})
+
+AimbotTab:CreateSlider({
+    name = "Max Distance", range = { 100, 700 }, increment = 1, suffix = "studs",
+    value = 100, flag = "AimbotTargetingMaxDist",
+    callback = function(v) Config.Aimbot.MaxDistance = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Limit Target Distance",
+    flag = "AimbotTargetingUseMaxDist",
+    callback = function(v) Config.Aimbot.UseMaxDistance = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Visible Only", flag = "AimbotTargetingVisibleOnly",
+    callback = function(v) Config.Aimbot.VisibleOnly = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Anti Katana", flag = "AimbotTargetingAntiKatana",
+    callback = function(v) Config.Aimbot.AntiKatana = v end,
+})
+
+AimbotTab:CreateToggle({
+    name = "Anti Riot Shield", flag = "AimbotTargetingAntiRiot",
+    callback = function(v) Config.Aimbot.RiotShield = v end,
+})
+
+
+TriggerTab:CreateToggle({
+    name = "Enable Triggerbot", flag = "TriggerEnabled",
+    callback = function(v) Config.Triggerbot.Enabled = v end,
+})
+
+TriggerTab:CreateToggle({
+    name = "Team Check", flag = "TriggerTeamCheck",
+    callback = function(v) Config.Triggerbot.TeamCheck = v end,
+})
+
+TriggerTab:CreateSlider({
+    name = "Reaction Time", range = { 0, 2 }, increment = 0.01, suffix = "s",
+    value = 0.05, flag = "TriggerReaction",
+    callback = function(v) Config.Triggerbot.ReactionTime = v end,
+})
+
+TriggerTab:CreateSlider({
+    name = "Shoot Delay", range = { 0, 2 }, increment = 0.01, suffix = "s",
+    value = 0.1, flag = "TriggerShootDelay",
+    callback = function(v) Config.Triggerbot.ShootDelay = v end,
+})
+
+TriggerTab:CreateSection({ name = "Targeting" })
+
+TriggerTab:CreateToggle({
+    name = "Active on Primary",
+    value = true,
+    flag = "TriggerClassPrimary",
+    callback = function(v) Config.Triggerbot.ActiveClasses.Primary = v end,
+})
+
+TriggerTab:CreateToggle({
+    name = "Active on Secondary",
+    value = true,
+    flag = "TriggerClassSecondary",
+    callback = function(v) Config.Triggerbot.ActiveClasses.Secondary = v end,
+})
+
+TriggerTab:CreateToggle({
+    name = "Active on Melee",
+    value = false,
+    flag = "TriggerClassMelee",
+    callback = function(v) Config.Triggerbot.ActiveClasses.Melee = v end,
+})
+
+TriggerTab:CreateToggle({
+    name = "Active on Utility",
+    value = false,
+    flag = "TriggerClassUtility",
+    callback = function(v) Config.Triggerbot.ActiveClasses.Utility = v end,
+})
+
+TriggerTab:CreateToggle({
+    name = "Anti Katana", flag = "TriggerTargetingAntiKatana",
+    callback = function(v) Config.Triggerbot.AntiKatana = v end,
+})
+
+TriggerTab:CreateToggle({
+    name = "Anti Riot Shield", flag = "TriggerTargetingAntiRiot",
+    callback = function(v) Config.Triggerbot.RiotShield = v end,
+})
+
+TriggerTab:CreateSlider({
+    name = "Max Distance", range = { 100, 700 }, increment = 1, suffix = "studs",
+    value = 100, flag = "TriggerTargetingMaxDist",
+    callback = function(v) Config.Triggerbot.MaxDistance = v end,
+})
+
+TriggerTab:CreateToggle({
+    name = "Limit Target Distance",
+    flag = "TriggerTargetingUseMaxDist",
+    callback = function(v) Config.Triggerbot.UseMaxDistance = v end,
+})
+
+
+VisualTab:CreateToggle({
+    name = "Enable ESP", flag = "ESPEnabled",
+    callback = function(v) Config.ESP.Enabled = v end,
+})
+
+VisualTab:CreateToggle({
+    name = "Team Check", flag = "ESPTeamCheck",
+    callback = function(v) Config.ESP.TeamCheck = v end,
+})
+
+VisualTab:CreateToggle({
+    name = "Box", flag = "ESPBox",
+    callback = function(v) Config.ESP.Box = v end,
+})
+
+VisualTab:CreateColorPicker({
+    name = "Box Color", color = Config.ESP.BoxColor, flag = "ESPBoxColor",
+    callback = function(c) Config.ESP.BoxColor = c end,
+})
+
+VisualTab:CreateToggle({
+    name = "Name", flag = "ESPName",
+    callback = function(v) Config.ESP.Name = v end,
+})
+
+VisualTab:CreateColorPicker({
+    name = "Name Color", color = Config.ESP.NameColor, flag = "ESPNameColor",
+    callback = function(c) Config.ESP.NameColor = c end,
+})
+
+VisualTab:CreateToggle({
+    name = "Health Bar", flag = "ESPHealth",
+    callback = function(v) Config.ESP.Health = v end,
+})
+
+VisualTab:CreateToggle({
+    name = "Health Text", flag = "ESPHealthText",
+    callback = function(v) Config.ESP.HealthText = v end,
+})
+
+VisualTab:CreateColorPicker({
+    name = "Health Text Color", color = Config.ESP.HealthTextColor, flag = "ESPHealthTextColor",
+    callback = function(c) Config.ESP.HealthTextColor = c end,
+})
+
+VisualTab:CreateToggle({
+    name = "Distance", flag = "ESPDistance",
+    callback = function(v) Config.ESP.Distance = v end,
+})
+
+VisualTab:CreateColorPicker({
+    name = "Distance Color", color = Config.ESP.DistanceColor, flag = "ESPDistanceColor",
+    callback = function(c) Config.ESP.DistanceColor = c end,
+})
+
+VisualTab:CreateToggle({
+    name = "Held Weapon", flag = "ESPHeldWeapon",
+    callback = function(v) Config.ESP.HeldWeapon = v end,
+})
+
+VisualTab:CreateColorPicker({
+    name = "Held Weapon Color", color = Config.ESP.HeldWeaponColor, flag = "ESPHeldWeaponColor",
+    callback = function(c) Config.ESP.HeldWeaponColor = c end,
+})
+
+VisualTab:CreateToggle({
+    name = "Tracer", flag = "ESPTracer",
+    callback = function(v) Config.ESP.Tracer = v end,
+})
+
+VisualTab:CreateColorPicker({
+    name = "Tracer Color", color = Config.ESP.TracerColor, flag = "ESPTracerColor",
+    callback = function(c) Config.ESP.TracerColor = c end,
+})
+
+VisualTab:CreateDropdown({
+    name = "Tracer Origin",
+    options = { "Bottom", "Center", "Top" },
+    currentOption = { "Bottom" }, multipleOptions = false, flag = "ESPTracerOrigin",
+    callback = function(v)
+        local val = optionValue(v)
+        if type(val) == "string" then
+            Config.ESP.TracerOrigin = val
+        end
+    end,
+})
+
+
+CombatTab:CreateToggle({
+    name = "Melee Range",
+    value = false,
+    flag = "melee_range_enabled",
+    callback = function(value)
+        Config.Melee.Enabled = value
+    end,
+})
+
+CombatTab:CreateSlider({
+    name = "Melee Reach",
+    range = { 5, 20 },
+    increment = 1,
+    value = 20,
+    suffix = " studs",
+    flag = "melee_range_distance",
+    callback = function(value)
+        Config.Melee.Range = value
+    end,
+})
+
+CombatTab:CreateSlider({
+    name = "Fire Rate",
+    range = { 10, 100 },
+    increment = 1,
+    value = 100,
+    suffix = "%",
+    flag = "firerate",
+    callback = function(value)
+        Config.Weapons.firerate = value
+    end,
+})
+
+CombatTab:CreateSlider({
+    name = "Melee Cooldown",
+    range = { 10, 100 },
+    increment = 1,
+    value = 100,
+    suffix = "%",
+    flag = "melee_cd",
+    callback = function(value)
+        Config.Weapons.meleeCooldown = value
+    end,
+})
+
+CombatTab:CreateToggle({
+    name = "Underground",
+    value = false,
+    flag = "ug_active",
+    callback = function(value)
+        undergroundActive = value
+    end,
+})
+
+
+task.defer(function()
+    local ok, state = pcall(function()
+        return Window.Flags and Window.Flags["ESPEnabled"]
+    end)
+    if ok and state ~= nil then
+        Config.ESP.Enabled = (state == true)
+        WasESPEnabled = nil
+    end
+end)
+
+Window:Notify({
+    title = "Combat Suite Loaded",
+    content = "All features ready",
+    duration = 5,
+})
